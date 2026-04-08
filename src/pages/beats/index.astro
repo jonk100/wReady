@@ -17,12 +17,14 @@ const sorted = beats.sort((a, b) => {
   const projectCompare = a.data.project.id.localeCompare(b.data.project.id);
   if (projectCompare !== 0) return projectCompare;
   
-  const aPlotId = a.data.plots && a.data.plots.length > 0 ? a.data.plots[0].id : '';
-  const bPlotId = b.data.plots && b.data.plots.length > 0 ? b.data.plots[0].id : '';
+  const aPlotId = a.data.plots && a.data.plots.length > 0 ? a.data.plots[0].plot.id : '';
+  const bPlotId = b.data.plots && b.data.plots.length > 0 ? b.data.plots[0].plot.id : '';
   const plotCompare = aPlotId.localeCompare(bPlotId);
   if (plotCompare !== 0) return plotCompare;
   
-  return (a.data.beatNumber || 0) - (b.data.beatNumber || 0);
+  const aBeatNumber = a.data.plots && a.data.plots.length > 0 ? (a.data.plots[0].beatNumber || 0) : 0;
+  const bBeatNumber = b.data.plots && b.data.plots.length > 0 ? (b.data.plots[0].beatNumber || 0) : 0;
+  return aBeatNumber - bBeatNumber;
 });
 ---
 
