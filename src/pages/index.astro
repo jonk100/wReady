@@ -2,6 +2,16 @@
 import Footer from '../components/Footer.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+import { getCollection } from 'astro:content';
+
+const collectionsToAudit = ['scenes', 'characters', 'projects', 'plots', 'beats', 'locations', 'episodes'];
+
+for (const name of collectionsToAudit) {
+  const entries = await getCollection(name as any);
+  console.log(`--- ${name.toUpperCase()} IDS ---`);
+  console.log(entries.map((e: any) => e.id));
+}
 ---
 
 <BaseLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>

@@ -1,6 +1,5 @@
 ---
 export type Props = {
-  /** Optional prefill values */
   initial?: {
     slug?: string;
     displayName?: string;
@@ -11,44 +10,23 @@ export type Props = {
     notes?: string[];
     barre?: { finger: number; fret: number; strings: [number, number] };
     alternateNames?: string[];
-    enharmonic?: string;
   };
 };
 
-const { initial } = Astro.props as Props;
-
-const initialSlug = initial?.slug ?? "";
-const initialDisplayName = initial?.displayName ?? "";
-const initialVoicingLabel = initial?.voicingLabel ?? "";
-const initialBaseFret = initial?.baseFret ?? 1;
-
-const initialFingering = JSON.stringify(initial?.fingering ?? [0, 0, 0, 0, 0, 0]);
-const initialFrets = JSON.stringify(initial?.frets ?? [-1, -1, -1, -1, -1, -1]);
-const initialNotes = JSON.stringify(initial?.notes ?? ["x", "x", "x", "x", "x", "x"]);
-
-const initialBarre = initial?.barre ? JSON.stringify(initial.barre) : "";
-const initialAlternateNames = initial?.alternateNames ? JSON.stringify(initial.alternateNames) : "";
-const initialEnharmonic = initial?.enharmonic ?? "";
+const { initial } = Astro.props;
 ---
 
 <section class="create">
-  <details>
+  <details id="chord-form-details">
     <summary class="create-summary">
       <div class="create-summary-content">
-        <button class="create-reset-btn" type="button" title="Reset form">
+        <button class="create-reset-btn" type="button" id="form-reset-btn" title="Reset form">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
             <path d="M3 3v5h5"/>
           </svg>
         </button>
-        
         <span class="create-summary-text">Add a new chord voicing</span>
-        
-        <button class="create-toggle-btn" type="button" aria-expanded="false">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </button>
       </div>
     </summary>
 
@@ -56,85 +34,65 @@ const initialEnharmonic = initial?.enharmonic ?? "";
       <div class="row">
         <label>
           <span>Slug</span>
-          <input name="slug" type="text" required value={initialSlug} placeholder="am7-1" />
+          <input name="slug" type="text" required value={initial?.slug || ""} placeholder="am7-1" />
         </label>
-
         <label>
           <span>Display name</span>
-          <input name="displayName" type="text" required value={initialDisplayName} placeholder="Am7" />
+          <input name="displayName" type="text" required value={initial?.displayName || ""} placeholder="Am7" />
         </label>
       </div>
 
       <div class="row">
         <label class="grow">
           <span>Voicing label</span>
-          <input
-            name="voicingLabel"
-            type="text"
-            required
-            value={initialVoicingLabel}
-            placeholder="E-shape barre, 5th fret"
-          />
+          <input name="voicingLabel" type="text" required value={initial?.voicingLabel || ""} placeholder="E-shape barre, 5th fret" />
         </label>
-
         <label>
           <span>Base fret</span>
-          <input name="baseFret" type="number" min="1" step="1" required value={String(initialBaseFret)} />
+          <input name="baseFret" type="number" min="1" required value={initial?.baseFret || 1} />
         </label>
       </div>
 
       <div class="row">
         <label class="grow">
           <span>Fingering (JSON)</span>
-          <input name="fingering" type="text" required value={initialFingering} />
+          <input name="fingering" type="text" required value={JSON.stringify(initial?.fingering || [0,0,0,0,0,0])} />
         </label>
       </div>
 
       <div class="row">
         <label class="grow">
           <span>Frets (JSON)</span>
-          <input name="frets" type="text" required value={initialFrets} />
+          <input name="frets" type="text" required value={JSON.stringify(initial?.frets || [-1,-1,-1,-1,-1,-1])} />
         </label>
       </div>
 
       <div class="row">
         <label class="grow">
-          <span>Notes (JSON, optional)</span>
-          <input name="notes" type="text" value={initialNotes} />
+          <span>Notes (JSON)</span>
+          <input name="notes" type="text" value={JSON.stringify(initial?.notes || [])} />
+        </label>
+      </div>
+
+      <div class="row">
+        <label class="grow">
+          <span>Alternate Names (JSON, optional)</span>
+          <input name="alternateNames" type="text" value={initial?.alternateNames ? JSON.stringify(initial.alternateNames) : ""} placeholder='["E7sus", "E7s4"]' />
         </label>
       </div>
 
       <div class="row">
         <label class="grow">
           <span>Barre (JSON, optional)</span>
-          <input name="barre" type="text" value={initialBarre} placeholder='{"finger":1,"fret":5,"strings":[1,6]}' />
-        </label>
-      </div>
-
-      <div class="row">
-        <label class="grow">
-          <span>Alternate names (JSON, optional)</span>
-          <input name="alternateNames" type="text" value={initialAlternateNames} placeholder='["Amin"]' />
-        </label>
-      </div>
-
-      <div class="row">
-        <label class="grow">
-          <span>Enharmonic (optional)</span>
-          <input name="enharmonic" type="text" value={initialEnharmonic} placeholder="Bb" />
+          <input name="barre" type="text" value={initial?.barre ? JSON.stringify(initial.barre) : ""} placeholder='{"finger":1,"fret":5,"strings":[1,6]}' />
         </label>
       </div>
 
       <div class="actions">
-        <button type="submit">Generate chord</button>
+        <button type="submit">Save to Collection</button>
       </div>
 
       <p id="chord-create-status" class="status" aria-live="polite"></p>
-
-      <label class="output">
-        <span>Generated MDX</span>
-        <textarea id="chord-create-output" rows="10" readonly></textarea>
-      </label>
     </form>
   </details>
 </section>
@@ -142,127 +100,105 @@ const initialEnharmonic = initial?.enharmonic ?? "";
 <script>
   const form = document.getElementById("chord-create-form") as HTMLFormElement;
   const statusEl = document.getElementById("chord-create-status") as HTMLParagraphElement;
-  const outputEl = document.getElementById("chord-create-output") as HTMLTextAreaElement;
-  const toggleBtn = document.querySelector(".create-toggle-btn") as HTMLButtonElement;
-  const resetBtn = document.querySelector(".create-reset-btn") as HTMLButtonElement;
-  const details = document.querySelector("details") as HTMLDetailsElement;
+  const details = document.getElementById("chord-form-details") as HTMLDetailsElement;
+  const resetBtn = document.getElementById("form-reset-btn");
 
-  // Handle custom toggle button
-  if (toggleBtn && details) {
-    toggleBtn.addEventListener("click", (e: Event) => {
-      e.preventDefault();
-      const isOpen = details.open;
-      details.open = !isOpen;
-      toggleBtn.setAttribute("aria-expanded", String(!isOpen));
+  // --- 1. Prefill Listener (Catch events from ChordAnalyser) ---
+  document.addEventListener("chord:create", (e: Event) => {
+    const customEvent = e as CustomEvent<{ 
+      displayName: string; 
+      frets: number[]; 
+      notes: string[]; 
+      fingering?: number[];
+      baseFret?: number;
+    }>;
+    
+    const { displayName, frets, notes, fingering, baseFret } = customEvent.detail;
+
+    // Map incoming data to form inputs
+    const fields: Record<string, string> = {
+      displayName: displayName,
+      frets: JSON.stringify(frets),
+      notes: JSON.stringify(notes),
+      fingering: JSON.stringify(fingering || [0,0,0,0,0,0]),
+      baseFret: String(baseFret || 1),
+      // Auto-generate a slug if empty
+      slug: displayName.toLowerCase().replace(/[^a-z0-9]/g, "") + "-0"
+    };
+
+    Object.entries(fields).forEach(([name, value]) => {
+      const input = form.querySelector(`[name="${name}"]`) as HTMLInputElement;
+      if (input) input.value = value;
     });
 
-    // Update aria-expanded when details state changes
-    details.addEventListener("toggle", () => {
-      toggleBtn.setAttribute("aria-expanded", String(details.open));
-    });
+    // Expand the form so the user sees it's filled
+    if (details) details.open = true;
+    
+    statusEl.style.color = "#d4bb88";
+    statusEl.textContent = "Form prefilled from analyser.";
+  });
 
-    // Set initial state
-    toggleBtn.setAttribute("aria-expanded", String(details.open));
-  }
-
-  // Handle reset button
-  if (resetBtn && form) {
-    resetBtn.addEventListener("click", (e: Event) => {
-      e.preventDefault();
-      form.reset();
-      setStatus("Form reset. All fields cleared.");
-      
-      // Clear output and status after a short delay
-      setTimeout(() => {
-        outputEl.value = "";
-        setStatus("");
-      }, 1500);
-    });
-  }
-
-  const setStatus = (msg: string): void => {
-    statusEl.textContent = msg;
-  };
-
-  form.addEventListener("submit", async (e: Event): Promise<void> => {
+  // --- 2. Save Listener (Send to API) ---
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    statusEl.style.color = "#d4bb88";
+    statusEl.textContent = "Saving...";
 
-    outputEl.value = "";
-    setStatus("Working...");
-
-    const data = new FormData(form);
+    const formData = new FormData(form);
+    const rawData = Object.fromEntries(formData.entries());
 
     try {
-      const res = await fetch("/api/chords/create", {
-        method: "POST",
-        body: data,
-      });
-
-      const json = (await res.json()) as {
-        ok: boolean;
-        error?: string;
-        wroteFile?: boolean;
-        slug?: string;
-        mdx?: string;
-        filePath?: string;
+      const payload = {
+        slug: rawData.slug,
+        displayName: rawData.displayName,
+        voicingLabel: rawData.voicingLabel,
+        baseFret: parseInt(rawData.baseFret as string, 10),
+        fingering: JSON.parse(rawData.fingering as string),
+        frets: JSON.parse(rawData.frets as string),
+        notes: JSON.parse(rawData.notes as string || "[]"),
+        alternateNames: rawData.alternateNames ? JSON.parse(rawData.alternateNames as string) : undefined,
+        barre: rawData.barre ? JSON.parse(rawData.barre as string) : undefined
       };
 
-      if (!res.ok || !json.ok) {
-        setStatus(json.error ?? "Request failed");
-        return;
-      }
+      const res = await fetch("/api/chords/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-      if (json.mdx) outputEl.value = json.mdx;
+      const result = await res.json();
 
-      if (json.wroteFile) {
-        setStatus(`Wrote ${json.slug}.mdx. Restart dev server to see it in the collection.`);
+      if (result.success) {
+        statusEl.style.color = "#4ade80";
+        statusEl.textContent = `Success: Saved ${result.id}.mdx`;
       } else {
-        setStatus(
-          "Generated MDX (not written to disk). Set ALLOW_CHORD_WRITE=true to enable saving."
-        );
+        statusEl.style.color = "#f87171";
+        statusEl.textContent = `Error: ${result.message}`;
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setStatus(msg);
+      statusEl.style.color = "#f87171";
+      statusEl.textContent = "Error parsing fields. Check your JSON format.";
     }
   });
 
-  // Listen for chord:create events from ChordAnalyser
-  document.addEventListener("chord:create", (e: Event) => {
-    const customEvent = e as CustomEvent<{ displayName: string; frets: number[]; notes: string[]; alternateNames: string[] }>;
-    const { displayName, frets, notes, alternateNames } = customEvent.detail;
-
-    // Prefill form fields
-    const displayNameField = form.querySelector<HTMLInputElement>('input[name="displayName"]');
-    const fretsField = form.querySelector<HTMLInputElement>('input[name="frets"]');
-    const notesField = form.querySelector<HTMLInputElement>('input[name="notes"]');
-    const alternateNamesField = form.querySelector<HTMLInputElement>('input[name="alternateNames"]');
-
-    if (displayNameField) displayNameField.value = displayName;
-    if (fretsField) fretsField.value = JSON.stringify(frets);
-    if (notesField) notesField.value = JSON.stringify(notes);
-    if (alternateNamesField && alternateNames.length > 0) {
-      alternateNamesField.value = JSON.stringify(alternateNames);
-    }
-
-    // Generate a suggested slug
-    const slugField = form.querySelector<HTMLInputElement>('input[name="slug"]');
-    if (slugField && !slugField.value) {
-      const base = displayName.toLowerCase().replace(/[^a-z0-9]/g, "");
-      slugField.value = `${base}-0`;
-    }
-
-    // Auto-expand the details if collapsed
-    const details = form.closest("details");
-    if (details && !details.open) {
-      details.open = true;
-    }
-
-    setStatus("Form prefilled from analyser. Adjust fields and submit to create.");
+  // Reset logic
+  resetBtn?.addEventListener("click", () => {
+     form.reset();
+     statusEl.textContent = "";
   });
 </script>
 
 <style>
+  /* Keep your existing CSS here */
+  .create { border: 1px solid #3a300f; border-radius: 6px; background: #1a1508; color: #d4bb88; margin-bottom: 2rem; }
+  .form { padding: 20px; display: grid; gap: 1rem; }
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .grow { flex: 1; }
+  label { display: grid; gap: 0.5rem; font-size: 0.8rem; }
+  input { background: #000; border: 1px solid #3a300f; color: #fff; padding: 0.5rem; border-radius: 4px; }
+  button { background: #e8a030; color: #000; border: none; padding: 0.6rem 1.2rem; border-radius: 4px; font-weight: bold; cursor: pointer; }
+  .status { font-family: monospace; font-size: 0.85rem; margin-top: 1rem; }
+
   .create {
     margin-bottom: var(--space-8);
     border: 1px solid #3a300f;
