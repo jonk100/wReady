@@ -1,0 +1,1373 @@
+=== File: a-0.mdx ===
+
+---
+displayName: A
+voicingLabel: open
+baseFret: 1
+fingering: [0, 0, 2, 3, 4, 0]
+frets: [-1, 0, 2, 2, 2, 0]
+notes: ["x", "A", "E", "A", "C#", "E"]
+---
+
+
+=== File: a-1.mdx ===
+
+---
+displayName: A
+voicingLabel: barre (e-shape)
+baseFret: 5
+fingering: [1,3,4,2,1,1]
+frets: [5,7,7,6,5,5]
+barre:
+  finger: 1
+  fret: 5
+  strings: [1, 6]
+notes: ["A", "E", "A", "C#", "E", "A"]
+---
+
+
+=== File: a5-1.mdx ===
+
+---
+displayName: A5
+voicingLabel: power chord
+baseFret: 5
+fingering: [1, 3, 4, -1, -1, -1]
+frets: [5, 7, 7, -1, -1, -1]
+notes: ["A", "E", "A", "x", "x", "x"]
+---
+
+
+=== File: a7-0.mdx ===
+
+---
+displayName: A7
+voicingLabel: Open
+baseFret: 1
+fingering:
+  - -1
+  - 0
+  - 2
+  - 0
+  - 3
+  - 0
+frets:
+  - -1
+  - 0
+  - 2
+  - 0
+  - 2
+  - 0
+notes:
+  - x
+  - A
+  - E
+  - G
+  - C#
+  - E
+---
+
+=== File: am-0.mdx ===
+
+---
+displayName: Am
+voicingLabel: open
+baseFret: 1
+fingering: [0, 0, 2, 3, 1, 0]
+frets: [-1, 0, 2, 2, 1, 0]
+notes: ["x", "A", "E", "A", "C", "E"]
+---
+
+
+=== File: am-1.mdx ===
+
+---
+displayName: Am
+voicingLabel: barre (e-shape)
+baseFret: 5
+fingering: [1,3,4,1,1,1]
+frets: [5,7,7,5,5,5]
+barre:
+  finger: 1
+  fret: 5
+  strings: [1, 6]
+notes: ["A", "E", "A", "C", "E", "A"]
+---
+
+
+=== File: am7-0.mdx ===
+
+---
+displayName: Am7
+voicingLabel: Open
+baseFret: 1
+fingering:
+  - -1
+  - 0
+  - 2
+  - 0
+  - 1
+  - 0
+frets:
+  - -1
+  - 0
+  - 2
+  - 0
+  - 1
+  - 0
+notes:
+  - x
+  - A
+  - E
+  - G
+  - C
+  - E
+alternateNames:
+  - C6/A
+---
+
+
+
+=== File: as-1.mdx ===
+
+---
+displayName: A#
+voicingLabel: barre (e-shape)
+baseFret: 6
+fingering: [1,3,4,2,1,1]
+frets: [6,8,8,7,6,6]
+barre:
+  finger: 1
+  fret: 6
+  strings: [1, 6]
+notes: ["A#", "F", "A#", "D", "F", "A#"]
+enharmonic: Bb
+---
+
+
+=== File: as-2.mdx ===
+
+---
+displayName: A#
+voicingLabel: barre (a-shape)
+baseFret: 1
+fingering: [-1,1,2,3,4,1]
+frets: [-1,1,3,3,3,1]
+barre:
+  finger: 1
+  fret: 1
+  strings: [2, 6]
+notes: ["x", "A#", "F", "A#", "D", "F"]
+---
+
+
+=== File: asm-1.mdx ===
+
+---
+displayName: A#m
+voicingLabel: barre (e-shape)
+baseFret: 6
+fingering: [1,3,4,1,1,1]
+frets: [6,8,8,6,6,6]
+barre:
+  finger: 1
+  fret: 6
+  strings: [1, 6]
+notes: ["A#", "F", "A#", "C#", "F", "A#"]
+enharmonic: Bbm
+---
+
+
+=== File: asm-2.mdx ===
+
+---
+displayName: A#m
+voicingLabel: barre (a-shape)
+baseFret: 1
+fingering: [-1,1,2,3,4,1]
+frets: [-1,1,3,3,2,1]
+barre:
+  finger: 1
+  fret: 1
+  strings: [2, 6]
+notes: ["x", "A#", "F", "A#", "C#", "F"]
+---
+
+
+=== File: b-1.mdx ===
+
+---
+displayName: B
+voicingLabel: barre (e-shape)
+baseFret: 7
+fingering: [1,3,4,2,1,1]
+frets: [7,9,9,8,7,7]
+barre:
+  finger: 1
+  fret: 7
+  strings: [1, 6]
+notes: ["B", "F#", "B", "D#", "F#", "B"]
+---
+
+
+=== File: b-2.mdx ===
+
+---
+displayName: B
+voicingLabel: barre (a-shape)
+baseFret: 2
+fingering: [-1,1,2,3,4,1]
+frets: [-1,2,4,4,4,2]
+barre:
+  finger: 1
+  fret: 2
+  strings: [2, 6]
+notes: ["x", "B", "F#", "B", "D#", "F#"]
+---
+
+
+=== File: b7-2.mdx ===
+
+---
+displayName: B7
+voicingLabel: Barre (A-Shape)
+baseFret: 1
+fingering:
+  - -1
+  - 1
+  - 3
+  - 1
+  - 4
+  - 1
+frets:
+  - -1
+  - 2
+  - 4
+  - 2
+  - 4
+  - 2
+notes:
+  - x
+  - B
+  - F#
+  - A
+  - D#
+  - F#
+barre:
+  finger: 1
+  fret: 2
+  strings:
+    - 2
+    - 6
+---
+
+
+
+=== File: bm-1.mdx ===
+
+---
+displayName: Bm
+voicingLabel: barre (e-shape)
+baseFret: 7
+fingering: [1,3,4,1,1,1]
+frets: [7,9,9,7,7,7]
+barre:
+  finger: 1
+  fret: 7
+  strings: [1, 6]
+notes: ["B", "F#", "B", "D", "F#", "B"]
+---
+
+
+=== File: bm-2.mdx ===
+
+---
+displayName: Bm
+voicingLabel: barre (a-shape)
+baseFret: 2
+fingering: [-1,1,2,3,4,1]
+frets: [-1,2,4,4,3,2]
+barre:
+  finger: 1
+  fret: 2
+  strings: [2, 6]
+notes: ["x", "B", "F#", "B", "D", "F#"]
+---
+
+
+=== File: c-0.mdx ===
+
+---
+displayName: C
+voicingLabel: open
+baseFret: 1
+fingering: [0, 3, 2, 0, 1, 0]
+frets: [-1, 3, 2, 0, 1, 0]
+notes: ["x", "C", "E", "G", "C", "E"]
+---
+
+
+=== File: c-1.mdx ===
+
+---
+displayName: C
+voicingLabel: barre (e-shape)
+baseFret: 8
+fingering: [1,3,4,2,1,1]
+frets: [8,10,10,9,8,8]
+barre:
+  finger: 1
+  fret: 8
+  strings: [1, 6]
+notes: ["C", "G", "C", "E", "G", "C"]
+---
+
+
+=== File: c-2.mdx ===
+
+---
+displayName: C
+voicingLabel: barre (a-shape)
+baseFret: 3
+fingering: [-1,1,2,3,4,1]
+frets: [-1,3,5,5,5,3]
+barre:
+  finger: 1
+  fret: 3
+  strings: [2, 6]
+notes: ["x", "C", "G", "C", "E", "G"]
+---
+
+
+=== File: c5-2.mdx ===
+
+---
+displayName: C5
+voicingLabel: Power Chord (A-root)
+baseFret: 3
+fingering: [-1, 1, 3, 4, -1, -1]
+frets: [-1, 3, 5, 5, -1, -1]
+notes: ["x", "C", "G", "C", "x", "x"]
+---
+
+
+=== File: cadd9-0.mdx ===
+
+---
+displayName: Cadd9
+voicingLabel: Open
+baseFret: 1
+fingering:
+  - -1
+  - 3
+  - 2
+  - 0
+  - 4
+  - 0
+frets:
+  - -1
+  - 3
+  - 2
+  - 0
+  - 3
+  - 0
+notes:
+  - x
+  - C
+  - E
+  - G
+  - D
+  - E
+---
+
+
+
+=== File: cadd9-0v2.mdx ===
+
+---
+displayName: Cadd9
+voicingLabel: Open
+baseFret: 1
+fingering:
+  - 0
+  - 2
+  - 1
+  - 0
+  - 3
+  - 4
+frets:
+  - -1
+  - 3
+  - 2
+  - 0
+  - 3
+  - 3
+notes:
+  - x
+  - C
+  - E
+  - G
+  - D
+  - G
+---
+
+
+
+=== File: cm-1.mdx ===
+
+---
+displayName: Cm
+voicingLabel: barre (e-shape)
+baseFret: 8
+fingering: [1,3,4,1,1,1]
+frets: [8,10,10,8,8,8]
+barre:
+  finger: 1
+  fret: 8
+  strings: [1, 6]
+notes: ["C", "G", "C", "D#", "G", "C"]
+---
+
+
+=== File: cm-2.mdx ===
+
+---
+displayName: Cm
+voicingLabel: barre (a-shape)
+baseFret: 3
+fingering: [-1,1,2,3,4,1]
+frets: [-1,3,5,5,4,3]
+barre:
+  finger: 1
+  fret: 3
+  strings: [2, 6]
+notes: ["x", "C", "G", "C", "D#", "G"]
+---
+
+
+=== File: cs-2.mdx ===
+
+---
+displayName: C#
+voicingLabel: barre (a-shape)
+baseFret: 4
+fingering: [-1,1,2,3,4,1]
+frets: [-1,4,6,6,6,4]
+barre:
+  finger: 1
+  fret: 4
+  strings: [2, 6]
+notes: ["x", "C#", "G#", "C#", "F", "G#"]
+enharmonic: Db
+---
+
+
+=== File: csm-2.mdx ===
+
+---
+displayName: C#m
+voicingLabel: barre (a-shape)
+baseFret: 4
+fingering: [-1,1,2,3,4,1]
+frets: [-1,4,6,6,5,4]
+barre:
+  finger: 1
+  fret: 4
+  strings: [2, 6]
+notes: ["x", "C#", "G#", "C#", "E", "G#"]
+enharmonic: Dbm
+---
+
+
+=== File: d-0.mdx ===
+
+---
+displayName: D
+voicingLabel: open
+baseFret: 1
+fingering: [0, 0, 0, 1, 3, 2]
+frets: [-1, -1, 0, 2, 3, 2]
+notes: ["x", "x", "D", "A", "D", "F#"]
+---
+
+
+=== File: d-2.mdx ===
+
+---
+displayName: D
+voicingLabel: barre (a-shape)
+baseFret: 5
+fingering: [-1,1,2,3,4,1]
+frets: [-1,5,7,7,7,5]
+barre:
+  finger: 1
+  fret: 5
+  strings: [2, 6]
+notes: ["x", "D", "A", "D", "F#", "A"]
+---
+
+
+=== File: d7-0.mdx ===
+
+---
+displayName: D7
+voicingLabel: Open
+baseFret: 1
+fingering:
+  - -1
+  - -1
+  - 0
+  - 2
+  - 1
+  - 3
+frets:
+  - -1
+  - -1
+  - 0
+  - 2
+  - 1
+  - 2
+notes:
+  - x
+  - x
+  - D
+  - A
+  - C
+  - F#
+---
+
+
+
+=== File: d7sus2-0.mdx ===
+
+---
+displayName: D7sus2
+voicingLabel: open
+baseFret: 1
+fingering: [-1,-1,0,2,1,0]
+frets: [-1,-1,0,2,1,0]
+notes: ["x", "x", "D", "A", "C", "E"]
+alternateNames: ["Am(add11)", "Am/D"]
+---
+
+=== File: dadd9-allman.mdx ===
+
+---
+displayName: Dadd9
+voicingLabel: Allman
+baseFret: 1
+fingering: [-1, 3, 2, -1, 1, -1]
+frets: [-1, 5, 4, -1, 3, 0]
+notes: ["x", "D", "F#", "x", "D", "E"]
+---
+
+
+=== File: dm-0.mdx ===
+
+---
+displayName: Dm
+voicingLabel: open
+baseFret: 1
+fingering: [0, 0, 0, 2, 3, 1]
+frets: [-1, -1, 0, 2, 3, 1]
+notes: ["x", "x", "D", "A", "D", "F"]
+---
+
+
+=== File: dm-2.mdx ===
+
+---
+displayName: Dm
+voicingLabel: barre (a-shape)
+baseFret: 5
+fingering: [-1,1,2,3,4,1]
+frets: [-1,5,7,7,6,5]
+barre:
+  finger: 1
+  fret: 5
+  strings: [2, 6]
+notes: ["x", "D", "A", "D", "F", "A"]
+---
+
+
+=== File: ds-2.mdx ===
+
+---
+displayName: D#
+voicingLabel: barre (a-shape)
+baseFret: 6
+fingering: [-1,1,2,3,4,1]
+frets: [-1,6,8,8,8,6]
+barre:
+  finger: 1
+  fret: 6
+  strings: [2, 6]
+notes: ["x", "D#", "A#", "D#", "G", "A#"]
+enharmonic: Eb
+---
+
+
+=== File: dsm-2.mdx ===
+
+---
+displayName: D#m
+voicingLabel: barre (a-shape)
+baseFret: 6
+fingering: [-1,1,2,3,4,1]
+frets: [-1,6,8,8,7,6]
+barre:
+  finger: 1
+  fret: 6
+  strings: [2, 6]
+notes: ["x", "D#", "A#", "D#", "F#", "A#"]
+enharmonic: Ebm
+---
+
+
+=== File: dsus2-0.mdx ===
+
+---
+displayName: Dsus2
+voicingLabel: open
+baseFret: 1
+fingering: [-1,-1,0,2,3,0]
+frets: [-1,-1,0,2,3,0]
+notes: ["x", "x", "D", "A", "D", "E"]
+alternateNames: ["Asus4/D"]
+---
+
+=== File: e-0.mdx ===
+
+---
+displayName: E
+voicingLabel: open
+baseFret: 1
+fingering: [0, 2, 3, 1, 0, 0]
+frets: [0, 2, 2, 1, 0, 0]
+notes: ["E", "B", "E", "G#", "B", "E"]
+---
+
+
+=== File: e-2.mdx ===
+
+---
+displayName: E
+voicingLabel: barre (a-shape)
+baseFret: 7
+fingering: [-1,1,2,3,4,1]
+frets: [-1,7,9,9,9,7]
+barre:
+  finger: 1
+  fret: 7
+  strings: [2, 6]
+notes: ["x", "E", "B", "E", "G#", "B"]
+---
+
+
+=== File: e5-1.mdx ===
+
+---
+displayName: E5
+voicingLabel: power chord
+baseFret: 1
+fingering: [0, 1, 2, -1, -1, -1]
+frets: [0, 2, 2, -1, -1, -1]
+notes: ["E", "B", "E", "x", "x", "x"]
+---
+
+
+=== File: e5-2-open-f7.mdx ===
+
+---
+displayName: E5
+voicingLabel: Open Power Chord
+baseFret: 1
+fingering:
+  - 0
+  - 1
+  - 3
+  - 4
+  - 0
+  - 0
+frets:
+  - 0
+  - 7
+  - 9
+  - 9
+  - 0
+  - 0
+notes:
+  - E
+  - E
+  - B
+  - E
+  - B
+  - E
+---
+
+
+=== File: e7-0.mdx ===
+
+---
+displayName: E7
+voicingLabel: Open
+baseFret: 1
+fingering:
+  - 0
+  - 2
+  - 0
+  - 1
+  - 0
+  - 0
+frets:
+  - 0
+  - 2
+  - 0
+  - 1
+  - 0
+  - 0
+notes:
+  - E
+  - B
+  - D
+  - G#
+  - B
+  - E
+---
+
+
+
+=== File: e7sus4-0.mdx ===
+
+---
+displayName: E7sus4
+voicingLabel: Open
+baseFret: 1
+fingering:
+  - 0
+  - 2
+  - 0
+  - 3
+  - 0
+  - 0
+frets:
+  - 0
+  - 2
+  - 0
+  - 2
+  - 0
+  - 0
+notes:
+  - E
+  - B
+  - D
+  - A
+  - B
+  - E
+---
+
+
+
+=== File: e7sus4-2-open-f5.mdx ===
+
+---
+displayName: E7sus4
+voicingLabel: Open Power Chord
+baseFret: 1
+fingering:
+  - 0
+  - 1
+  - 3
+  - 4
+  - 0
+  - 0
+frets:
+  - 0
+  - 5
+  - 7
+  - 7
+  - 0
+  - 0
+notes:
+  - E
+  - D
+  - A
+  - D
+  - B
+  - E
+alternateNames:
+  - D6sus2
+  - D6sus2/E
+---
+
+
+=== File: em-0.mdx ===
+
+---
+displayName: Em
+voicingLabel: open
+baseFret: 1
+fingering: [0, 2, 3, 0, 0, 0]
+frets: [0, 2, 2, 0, 0, 0]
+notes: ["E", "B", "E", "G", "B", "E"]
+---
+
+
+=== File: em-2.mdx ===
+
+---
+displayName: Em
+voicingLabel: barre (a-shape)
+baseFret: 7
+fingering: [-1,1,2,3,4,1]
+frets: [-1,7,9,9,8,7]
+barre:
+  finger: 1
+  fret: 7
+  strings: [2, 6]
+notes: ["x", "E", "B", "E", "G", "B"]
+---
+
+
+=== File: em7-0.mdx ===
+
+---
+displayName: Em7
+voicingLabel: Open
+baseFret: 1
+fingering:
+  - 0
+  - 2
+  - 0
+  - 0
+  - 0
+  - 0
+frets:
+  - 0
+  - 2
+  - 0
+  - 0
+  - 0
+  - 0
+notes:
+  - E
+  - B
+  - D
+  - G
+  - B
+  - E
+alternateNames:
+  - G6/E
+---
+
+
+=== File: em7-0v2.mdx ===
+
+---
+displayName: Em7
+voicingLabel: Open Variation
+baseFret: 1
+fingering:
+  - 0
+  - 1
+  - 2
+  - 0
+  - 4
+  - 0
+frets:
+  - 0
+  - 2
+  - 2
+  - 0
+  - 3
+  - 0
+notes:
+  - E
+  - B
+  - E
+  - G
+  - D
+  - E
+alternateNames:
+  - G6/E
+---
+
+
+
+=== File: em7-2-open-f10.mdx ===
+
+---
+displayName: Em7
+voicingLabel: Open Power Chord
+baseFret: 1
+fingering:
+  - 0
+  - 1
+  - 3
+  - 4
+  - 0
+  - 0
+frets:
+  - 0
+  - 10
+  - 12
+  - 12
+  - 0
+  - 0
+notes:
+  - E
+  - G
+  - D
+  - G
+  - B
+  - E
+alternateNames:
+  - G6/E
+---
+
+=== File: em7-allman.mdx ===
+
+---
+displayName: Em7
+voicingLabel: Allman
+baseFret: 8
+fingering: [0, 3, 2, 0, 1, 4]
+frets: [0, 10, 9, 0, 8, 10]
+notes: ["E", "G", "B", "G", "G", "D"]
+
+---
+
+
+=== File: em-allman-0.mdx ===
+
+---
+displayName: Em
+voicingLabel: Allman (open)
+baseFret: 8
+fingering: [0, 3, 2, 0, 0, 0]
+frets: [0, 10, 9, 0, 0, 0]
+notes: ["E", "G", "B", "G", "B", "E"]
+---
+
+
+=== File: em-allman.mdx ===
+
+---
+displayName: Em
+voicingLabel: Allman
+baseFret: 8
+fingering: [0, 3, 2, 0, 1, 0]
+frets: [0, 10, 9, 0, 8, 0]
+notes: ["E", "G", "B", "G", "G", "E"]
+---
+
+
+=== File: esus2-2-open-f2.mdx ===
+
+---
+displayName: Esus2
+voicingLabel: Open Power Chord
+baseFret: 1
+fingering:
+  - 0
+  - 1
+  - 3
+  - 4
+  - 0
+  - 0
+frets:
+  - 0
+  - 2
+  - 4
+  - 4
+  - 0
+  - 0
+notes:
+  - E
+  - B
+  - F#
+  - B
+  - B
+  - E
+alternateNames:
+  - Bsus4/E
+  - Bsus4
+---
+
+
+
+=== File: esus4-2-open-f12.mdx ===
+
+---
+displayName: Esus4
+voicingLabel: Open Power Chord
+baseFret: 1
+fingering:
+  - 0
+  - 1
+  - 3
+  - 4
+  - 0
+  - 0
+frets:
+  - 0
+  - 12
+  - 14
+  - 14
+  - 0
+  - 0
+notes:
+  - E
+  - A
+  - E
+  - A
+  - B
+  - E
+alternateNames:
+  - Asus2/E
+---
+
+
+
+=== File: f-1.mdx ===
+
+---
+displayName: F
+voicingLabel: barre (e-shape)
+baseFret: 1
+fingering: [1,3,4,2,1,1]
+frets: [1,3,3,2,1,1]
+barre:
+  finger: 1
+  fret: 1
+  strings: [1, 6]
+notes: ["F", "C", "F", "A", "C", "F"]
+---
+
+
+=== File: f-2.mdx ===
+
+---
+displayName: F
+voicingLabel: barre (a-shape)
+baseFret: 8
+fingering: [-1,1,2,3,4,1]
+frets: [-1,8,10,10,10,8]
+barre:
+  finger: 1
+  fret: 8
+  strings: [2, 6]
+notes: ["x", "F", "C", "F", "A", "C"]
+---
+
+
+=== File: f5-1.mdx ===
+
+---
+displayName: F5
+voicingLabel: power chord
+baseFret: 1
+fingering: [1, 3, 4, -1, -1, -1]
+frets: [1, 3, 3, -1, -1, -1]
+notes: ["F", "C", "F", "x", "x", "x"]
+---
+
+
+=== File: f7-1.mdx ===
+
+---
+displayName: F7
+voicingLabel: Barre (E-Shape)
+baseFret: 1
+fingering:
+  - 1
+  - 3
+  - 1
+  - 2
+  - 1
+  - 1
+frets:
+  - 1
+  - 3
+  - 1
+  - 2
+  - 1
+  - 1
+notes:
+  - F
+  - C
+  - D#
+  - A
+  - C
+  - F
+barre:
+  finger: 1
+  fret: 1
+  strings:
+    - 1
+    - 6
+---
+
+
+
+=== File: fm-1.mdx ===
+
+---
+displayName: Fm
+voicingLabel: barre (e-shape)
+baseFret: 1
+fingering: [1,3,4,1,1,1]
+frets: [1,3,3,1,1,1]
+barre:
+  finger: 1
+  fret: 1
+  strings: [1, 6]
+notes: ["F", "C", "F", "G#", "C", "F"]
+---
+
+
+=== File: fm-2.mdx ===
+
+---
+displayName: Fm
+voicingLabel: barre (a-shape)
+baseFret: 8
+fingering: [-1,1,2,3,4,1]
+frets: [-1,8,10,10,9,8]
+barre:
+  finger: 1
+  fret: 8
+  strings: [2, 6]
+notes: ["x", "F", "C", "F", "G#", "C"]
+---
+
+
+=== File: fs-1.mdx ===
+
+---
+displayName: F#
+voicingLabel: barre (e-shape)
+baseFret: 2
+fingering: [1,3,4,2,1,1]
+frets: [2,4,4,3,2,2]
+barre:
+  finger: 1
+  fret: 2
+  strings: [1, 6]
+notes: ["F#", "C#", "F#", "A#", "C#", "F#"]
+enharmonic: Gb
+---
+
+
+=== File: fs7-1.mdx ===
+
+---
+displayName: F#7
+voicingLabel: Barre (E-Shape)
+baseFret: 1
+fingering:
+  - 1
+  - 3
+  - 1
+  - 2
+  - 1
+  - 1
+frets:
+  - 2
+  - 4
+  - 2
+  - 3
+  - 2
+  - 2
+notes:
+  - F#
+  - C#
+  - E
+  - A#
+  - C#
+  - F#
+barre:
+  finger: 1
+  fret: 2
+  strings:
+    - 1
+    - 6
+---
+
+
+
+=== File: fsm-1.mdx ===
+
+---
+displayName: F#m
+voicingLabel: barre (e-shape)
+baseFret: 2
+fingering: [1,3,4,1,1,1]
+frets: [2,4,4,2,2,2]
+barre:
+  finger: 1
+  fret: 2
+  strings: [1, 6]
+notes: ["F#", "C#", "F#", "A", "C#", "F#"]
+enharmonic: Gbm
+---
+
+
+=== File: g-0.mdx ===
+
+---
+displayName: G
+voicingLabel: open
+baseFret: 1
+fingering: [3, 2, 0, 0, 0, 4]
+frets: [3, 2, 0, 0, 0, 3]
+notes: ["G", "B", "D", "G", "B", "G"]
+---
+
+
+=== File: g-1.mdx ===
+
+---
+displayName: G
+voicingLabel: barre (e-shape)
+baseFret: 3
+fingering: [1,3,4,2,1,1]
+frets: [3,5,5,4,3,3]
+barre:
+  finger: 1
+  fret: 3
+  strings: [1, 6]
+notes: ["G", "D", "G", "B", "D", "G"]
+---
+
+
+=== File: g5-1.mdx ===
+
+---
+displayName: G5
+voicingLabel: power chord
+baseFret: 3
+fingering: [1, 3, 4, -1, -1, -1]
+frets: [3, 5, 5, -1, -1, -1]
+notes: ["G", "D", "G", "x", "x", "x"]
+---
+
+
+=== File: g7-0.mdx ===
+
+---
+displayName: G7
+voicingLabel: Open
+baseFret: 1
+fingering:
+  - 3
+  - 2
+  - 0
+  - 0
+  - 0
+  - 1
+frets:
+  - 3
+  - 2
+  - 0
+  - 0
+  - 0
+  - 1
+notes:
+  - G
+  - B
+  - D
+  - G
+  - B
+  - F
+---
+
+
+
+=== File: g7-1.mdx ===
+
+---
+displayName: G7
+voicingLabel: Barre (E-Shape)
+baseFret: 1
+fingering:
+  - 1
+  - 3
+  - 1
+  - 2
+  - 1
+  - 1
+frets:
+  - 3
+  - 5
+  - 3
+  - 4
+  - 3
+  - 3
+notes:
+  - G
+  - D
+  - F
+  - B
+  - D
+  - G
+barre:
+  finger: 1
+  fret: 3
+  strings:
+    - 1
+    - 6
+---
+
+
+
+=== File: gm-1.mdx ===
+
+---
+displayName: Gm
+voicingLabel: barre (e-shape)
+baseFret: 3
+fingering: [1,3,4,1,1,1]
+frets: [3,5,5,3,3,3]
+barre:
+  finger: 1
+  fret: 3
+  strings: [1, 6]
+notes: ["G", "D", "G", "A#", "D", "G"]
+---
+
+
+=== File: gs-1.mdx ===
+
+---
+displayName: G#
+voicingLabel: barre (e-shape)
+baseFret: 4
+fingering: [1,3,4,2,1,1]
+frets: [4,6,6,5,4,4]
+barre:
+  finger: 1
+  fret: 4
+  strings: [1, 6]
+notes: ["G#", "D#", "G#", "C", "D#", "G#"]
+enharmonic: Ab
+---
+
+
+=== File: gsm-1.mdx ===
+
+---
+displayName: G#m
+voicingLabel: barre (e-shape)
+baseFret: 4
+fingering: [1,3,4,1,1,1]
+frets: [4,6,6,4,4,4]
+barre:
+  finger: 1
+  fret: 4
+  strings: [1, 6]
+notes: ["G#", "D#", "G#", "B", "D#", "G#"]
+enharmonic: Abm
+---
+
+
