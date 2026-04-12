@@ -7,36 +7,71 @@
  * for consistent styling with other collection pages.
  */
 
-import { getCollection, type CollectionEntry } from "astro:content";
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import matter from 'gray-matter';
+import type { CollectionEntry } from "astro:content";
 import IndexLayout from "../../layouts/IndexLayout.astro";
 import ChordCard from "../../components/collection-cards/ChordCard.astro";
 import ChordFilter from "../../components/filters/ChordFilter.astro";
 import ChordAnalyser from "../../components/chords/ChordAnalyser.astro";
 import ChordCreateForm from "../../components/chords/ChordCreateForm.astro";
 
-const chords = await getCollection("chords");
+export const prerender = false;
 
-// Sort by displayName then by slug (which encodes voicing number)
-const sorted = chords.sort((a, b) => {
-  const nameCompare = a.data.displayName.localeCompare(b.data.displayName);
+type ChordEntry = CollectionEntry<"chords">;
+
+/**
+ * Reads all chord .mdx files directly from disk at request time,
+ * bypassing Astro's content store (which is populated at build time
+ * and does not update between SSR requests).
+ *
+ * Returns an array shaped like CollectionEntry<"chords"> so ChordCard
+ * and ChordFilter remain unchanged.
+ *
+ * @returns {Promise<Array<{ id: string, data: Record<string, any> }>>}
+ */
+const chordsDir = path.resolve(process.cwd(), 'src/content/chords');
+
+const files = await fs.readdir(chordsDir);
+
+const chords = (
+  await Promise.all(
+    files
+      .filter(f => f.endsWith('.md') || f.endsWith('.mdx'))
+      .map(async (file) => {
+        const raw = await fs.readFile(path.join(chordsDir, file), 'utf-8');
+        const { data } = matter(raw);
+        const id = file.replace(/\.(md|mdx)$/, '');
+        return { 
+          id, 
+          data: data as ChordEntry['data'], 
+          collection: "chords" as const 
+        };
+      })
+  )
+).sort((a, b) => {
+  const nameCompare = (a.data.displayName ?? '').localeCompare(b.data.displayName ?? '');
   if (nameCompare !== 0) return nameCompare;
   return a.id.localeCompare(b.id);
 });
+
+console.log(`Found ${chords.length} chord files on disk`);
 ---
 
 <IndexLayout
   title="Chords"
-  count={sorted.length}
+  count={chords.length}
   description="Guitar chord voicing reference library."
 >
   <ChordAnalyser />
   <ChordCreateForm />
-  <ChordFilter chords={sorted} />
-  {sorted.length === 0 ? (
+  <ChordFilter chords={chords} />
+  {chords.length === 0 ? (
     <p class="empty">No chords yet.</p>
   ) : (
     <ul class="grid grid--cols-4">
-      {sorted.map((entry) => (
+      {chords.map((entry) => (
         <li>
           <ChordCard entry={entry} />
         </li>

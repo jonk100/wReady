@@ -1,92 +1,51 @@
-# To Do
+# TODO - 5 layer architecture
 
-## Pages
+## Summary
 
-[x] - add poems slug
-[x] - add short stories slug
-[x] - add writings index page
+Based on the current state of your codebase (which relies on disparate scripts in `scripts/` and "vertical slice" logic in `src/pages/api/`) and the new 5-layer architectural goal, your TODO list should focus on migrating existing features into this structured framework.
 
-## Simple shit
+Here is a strategic TODO list, ordered from foundational infrastructure to high-level creative tools.
 
-[x] - correct bar counts on songs index page on song cards
-[ ] - add more songs
-    [ ] - If I Had a Gun
-    [x] - Almost There
-    [x] - Think for Yourself
-    [ ] - Please Remind Me
-    [ ] - Take My Hand
-    [ ] - Human
-    [ ] - Throwin' My Time Away
-    [x] - Cochranton
-    [ ] - AI Ate My Homework
-[ ] - implement search functionality for songs
-[ ] - add audio player for song previews
-[x] - create song detail pages with lyrics and chords
-[ ] - add difficulty ratings to songs
-[ ] - implement song filtering by genre/difficulty
+### Phase 1: Foundational Infrastructure (Layer 4)
+* [ ] **Create Shared API Utilities:** Consolidate the duplicated logic found in your current `songs/create.ts` and `chords/create.ts`.
+    * `src/utils/infra/fileWriter.ts`: A unified tool to handle `fs.writeFile` with slug-collision checks.
+    * `src/utils/infra/imageDownloader.ts`: Move logic from `scripts/utils/download.ts` into a version usable by your API.
+    * `src/utils/infra/tmdb.ts`: Transform `scripts/enrich-tmdb.ts` into a reusable module.
+* [ ] **Environment Variables:** Rename `ALLOW_CHORD_WRITE` to `ALLOW_CONTENT_WRITE` in `.env` and `astro.config.mjs` to make it collection-agnostic.
 
-## Blog shit
+### Phase 2: Domain Logic Extraction (Layer 3)
+* [ ] **Music Theory Engine:** Move the `CHORD_FORMULAS` and `SCALES` arrays from `src/consts.ts` into `src/utils/domain/music.ts`. Create functions like `getChordFingering(root, formula)`.
+* [ ] **Screenplay Parser:** Create `src/utils/domain/screenplay.ts` to house the Regex-based dialogue counters and page-length estimators for your `scenes` collection.
+* [ ] **Data Shapers:** Create `src/utils/domain/shapers/` to hold functions that turn raw form data into the exact MDX frontmatter strings required by your `content.config.ts` schemas.
 
-[ ] - add more nfl draft prospect articles
-[ ] - add a series on learning typescript
-[ ] - add a series on learning to play guitar
-[ ] - add a series on learning to play piano
-[ ] - add a series on music theory
-[ ] - add a series on songwriting
-[ ] - write about web development best practices
-[ ] - create tutorials for Astro framework
-[ ] - add content about music production
-[ ] - write about creative writing techniques
-[ ] - create a series on data structures and algorithms
+### Phase 3: The Service Layer Migration (Layer 2)
+* [ ] **ReviewService:** Create `src/services/ReviewService.ts`.
+    * Integrate the "Enrichment" flow: Fetch TMDB -> Download Poster -> Format MDX -> Save.
+* [ ] **SceneService:** Create `src/services/SceneService.ts`.
+    * Integrate the "Validation" flow: Check Project existence -> Validate Characters -> Calculate Stats -> Save.
+* [ ] **MusicService:** Create `src/services/MusicService.ts`.
+    * Handle Chord and Song creation, ensuring songs only reference chords that exist.
 
-## Her Majesty's Displeasure
+### Phase 4: API & UI Refactoring (Layers 1 & 5)
+* [ ] **Thin API Routes:** Refactor `src/pages/api/songs/create.ts` and `chords/create.ts` to be 20-line files that simply call the appropriate Service.
+* [ ] **The "BaseForm" Component:** Create a generic `src/components/forms/BaseCreateForm.astro` that handles:
+    * The "Draft/Review" toggle logic.
+    * The POST request to the API.
+    * The MDX preview window.
+* [ ] **Collection Forms:** Rebuild `SongCreateForm.astro`, `ChordCreateForm.astro`, and `ReviewCreateForm.astro` using the `BaseForm` as a wrapper.
 
-[x] - add all scenes to her majesty's displeasure
-    [x] - episode 1
-    [x] - episode 2
-    [x] - episode 3
-    [x] - episode 4
-    [x] - episode 5
-    [x] - episode 6
-[ ] - add all beats to her majesty's displeasure
-    [x] - episode 1
-    [ ] - episode 2
-    [ ] - episode 3
-    [ ] - episode 4
-    [ ] - episode 5
-    [ ] - episode 6
-[x] - add all characters to her majesty's displeasure
-[x] - add all locations to her majesty's displeasure
-[x] - add all episodes to her majesty's displeasure
-[ ] - implement beat timeline visualization
-[ ] - add character relationship diagrams
-[ ] - create dialogue export functionality
-[ ] - add scene continuity checking
-[ ] - implement character arc tracking
+### Phase 5: Collection-Specific Enhancements
+* [ ] **Character Creation:** Add a project-aware character form that saves files into `src/content/characters/[project-id]/`.
+* [ ] **Scriptorium Integration:** Update your Astro site to use the **Domain Layer** music logic to show live chord diagrams on the frontend, ensuring the "math" matches the "data."
 
-## Technical Improvements
+### Phase 6: Maintenance & Cleanup
+* [ ] **Retire Legacy Scripts:** Once the Services are working, delete the redundant files in `scripts/` (like `enrich-tmdb.ts`) since that logic now lives in the app.
+* [ ] **Validation Ledger:** Update your internal documentation to reflect that all Zod validation now happens at the "Domain" and "Infra" boundary.
 
-[ ] - optimize site performance and loading speed
-[ ] - implement dark mode toggle
-[ ] - add RSS feed for blog content
-[ ] - improve mobile responsiveness
-[ ] - add sitemap generation
-[ ] - implement SEO optimizations
-[ ] - add analytics tracking
-[ ] - create component documentation
-[ ] - set up automated testing
-[ ] - implement error handling and logging
 
-## Content Management
 
-[ ] - create content migration scripts
-[ ] - implement content versioning
-[ ] - add content scheduling system
-[ ] - create content backup system
-[ ] - implement content search across all collections
-[ ] - add content tagging system
-[ ] - create content analytics dashboard
+[Image of a software development roadmap]
 
-## Chords
 
-[ ] - enable chord form file writing functionality (set ALLOW_CHORD_WRITE=true)
+**Why this order?**
+By starting with **Infrastructure**, you build the tools that the **Services** need to work. By ending with the **UI**, you ensure that when you finally build the forms, the entire engine behind them is already robust and tested.

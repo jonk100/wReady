@@ -57,7 +57,7 @@ const sets = defineCollection({
   loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/sets" }),
   schema: z.object({
     title: z.string(),
-    contentType: z.enum(["poems", "short-stories"]),
+    contentTypes: z.array(z.enum(["poems", "short-stories", "dreams"])).default([]),
     themes: z.array(reference("themes")).default([]),
     status: z.enum(["draft", "complete", "published"]).default("draft"),
   }),
@@ -108,49 +108,22 @@ const themes = defineCollection({
 const chords = defineCollection({
   loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/chords" }),
   schema: z.object({
-    /**
-     * The display name shown on chord sheets.
-     * Multiple voicings share the same displayName.
-     * e.g. "Am7" for am7-0, am7-1, am7-2
-     */
     displayName: z.string(),
-
-    /** Voicing descriptor shown in the fingering reference UI */
     voicingLabel: z.string(),
+    // z.coerce ensures strings like "-1" become numbers
+    baseFret: z.coerce.number().default(1),
+    fingering: z.array(z.coerce.number()),
+    frets: z.array(z.coerce.number()),
+    
+    // Change tuple to array to stop "exactly 2 items" failures
+    barre: z.object({
+      finger: z.coerce.number(),
+      fret: z.coerce.number(),
+      strings: z.array(z.coerce.number()), 
+    }).optional(),
 
-    /**
-     * Which fret this voicing starts on (usually the root fret).
-     * Open chords are 1. Barre chords specify their root fret.
-     */
-    baseFret: z.number().int().min(1).default(1),
-
-    /**
-     * Six-string fingering array, low E to high E.
-     * Values: finger number (1–4), 0 = open, -1 = muted (x)
-     */
-    fingering: z.array(z.number().min(-1).max(4)).length(6),
-
-    /**
-     * Actual fret number each finger is on, low E to high E.
-     * -1 = muted, 0 = open, positive integer = fret number
-     */
-    frets: z.array(z.number().min(-1)).length(6),
-
-    /** Optional barre — which finger barres which fret across which strings */
-    barre: z
-      .object({
-        finger: z.number().min(1).max(4),
-        fret: z.number().min(1),
-        /** Which strings the barre covers e.g. [1, 6] = full barre */
-        strings: z.tuple([z.number().min(1), z.number().max(6)]),
-      })
-      .optional(),
-
-    /** Notes sounding on each string, low E to high E */
-    notes: z.array(z.string()).length(6).optional(),
+    notes: z.array(z.coerce.string()).optional(), // Coerce to string to handle unquoted YAML
     alternateNames: z.array(z.string()).optional(),
-
-    /** Optional enharmonic equivalent (e.g., "A#" for "Bb", "G#" for "Ab") */
     enharmonic: z.string().optional(),
   }),
 });
@@ -490,6 +463,7 @@ const songs = defineCollection({
     status: z
       .enum(["idea", "demo", "arranged", "recorded", "released"])
       .default("idea"),
+    writtenAt: z.coerce.date().optional(),
   }),
 });
 
@@ -511,6 +485,19 @@ const poems = defineCollection({
 
 const shortStories = defineCollection({
   loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/short-stories" }),
+  schema: z.object({
+    title: z.string(),
+    set: reference("sets").optional(),
+    companionProject: reference("projects").optional(),
+    wordCount: z.number().int().positive().optional(),
+    themes: z.array(reference("themes")).default([]),
+    status: z.enum(["draft", "revised", "complete"]).default("draft"),
+    writtenAt: z.coerce.date().optional(),
+  }),
+});
+
+const dreams = defineCollection({
+  loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/dreams" }),
   schema: z.object({
     title: z.string(),
     set: reference("sets").optional(),
@@ -652,6 +639,7 @@ export const collections = {
   songs,
   poems,
   "short-stories": shortStories,
+  dreams,
   posts,
   reviews,
 };

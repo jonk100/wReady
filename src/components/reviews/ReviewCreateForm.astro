@@ -1,0 +1,674 @@
+---
+/**
+ * ReviewCreateForm.astro
+ * 
+ * Form for creating new reviews with TMDB integration.
+ * For movies/TV, includes search functionality to auto-populate TMDB data.
+ */
+---
+
+<section class="create">
+  <details>
+    <summary>Add a new review</summary>
+    
+    <form id="review-create-form">
+      <div class="form-grid">
+        <!-- Basic Info -->
+        <div class="form-field">
+          <label for="slug">Slug *</label>
+          <input type="text" id="slug" name="slug" required 
+                 placeholder="e.g., the-matrix-1999" />
+        </div>
+
+        <div class="form-field">
+          <label for="title">Title *</label>
+          <input type="text" id="title" name="title" required 
+                 placeholder="e.g., The Matrix" />
+        </div>
+
+        <div class="form-field">
+          <label for="subtitle">Subtitle</label>
+          <input type="text" id="subtitle" name="subtitle" 
+                 placeholder="Optional subtitle" />
+        </div>
+
+        <div class="form-field">
+          <label for="category">Category *</label>
+          <select id="category" name="category" required>
+            <option value="">Select category...</option>
+            <option value="movie">Movie</option>
+            <option value="tv">TV Series</option>
+            <option value="book">Book</option>
+            <option value="album">Album</option>
+            <option value="game">Game</option>
+            <option value="restaurant">Restaurant</option>
+            <option value="product">Product</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="pubDate">Publication Date *</label>
+          <input type="date" id="pubDate" name="pubDate" required />
+        </div>
+
+        <!-- TMDB Integration (for movies/TV) -->
+        <div class="tmdb-section" id="tmdb-section" style="display: none;">
+          <h3>TMDB Integration (Movies & TV)</h3>
+          
+          <div class="form-field">
+            <label for="tmdb-search">Search TMDB</label>
+            <div class="search-row">
+              <input type="text" id="tmdb-search" placeholder="Search for movie/TV show..." />
+              <button type="button" id="tmdb-search-btn">Search</button>
+            </div>
+          </div>
+
+          <div id="tmdb-results" class="tmdb-results" style="display: none;">
+            <!-- Search results will be populated here -->
+          </div>
+
+          <div class="form-field">
+            <label for="tmdb-id">TMDB ID</label>
+            <input type="number" id="tmdb-id" name="tmdbId" 
+                   placeholder="Auto-filled from search or enter manually" />
+          </div>
+        </div>
+
+        <!-- TV Specific Fields -->
+        <div class="tv-fields" id="tv-fields" style="display: none;">
+          <div class="form-field">
+            <label for="season">Season</label>
+            <input type="number" id="season" name="season" min="1" />
+          </div>
+
+          <div class="form-field">
+            <label for="episode">Episode</label>
+            <input type="number" id="episode" name="episode" min="1" />
+          </div>
+
+          <div class="form-field">
+            <label for="episodes">Total Episodes</label>
+            <input type="number" id="episodes" name="episodes" min="1" />
+          </div>
+        </div>
+
+        <!-- Optional Fields -->
+        <div class="form-field">
+          <label for="url">URL</label>
+          <input type="url" id="url" name="url" placeholder="https://..." />
+        </div>
+
+        <div class="form-field">
+          <label for="imdb-id">IMDb ID</label>
+          <input type="text" id="imdb-id" name="imdbId" placeholder="tt1234567" />
+        </div>
+
+        <div class="form-field">
+          <label for="imdb-rating">IMDb Rating</label>
+          <input type="number" id="imdb-rating" name="imdbRating" 
+                 min="0" max="10" step="0.1" />
+        </div>
+
+        <div class="form-field">
+          <label for="rotten-tomatoes-id">Rotten Tomatoes ID</label>
+          <input type="text" id="rotten-tomatoes-id" name="rottenTomatoesId" />
+        </div>
+
+        <div class="form-field">
+          <label for="rotten-tomatoes-rating">Rotten Tomatoes Rating</label>
+          <input type="number" id="rotten-tomatoes-rating" name="rottenTomatoesRating" 
+                 min="0" max="100" step="1" />
+        </div>
+
+        <!-- Cast -->
+        <div class="form-field full-width">
+          <label for="cast-search">Cast</label>
+          <div class="cast-section">
+            <div class="cast-search">
+              <input type="text" id="cast-search" placeholder="Search for actors..." />
+              <button type="button" id="cast-search-btn">Search</button>
+            </div>
+            <div id="cast-results" class="cast-results" style="display: none;">
+              <!-- Actor search results will be populated here -->
+            </div>
+            <div class="selected-cast" id="selected-cast">
+              <!-- Selected cast members will be shown here -->
+            </div>
+            <input type="hidden" id="cast" name="cast" value="" />
+          </div>
+        </div>
+
+        <!-- Credits -->
+        <div class="form-field">
+          <label for="writers">Writers (comma-separated)</label>
+          <input type="text" id="writers" name="writers" 
+                 placeholder="Writer One, Writer Two" />
+        </div>
+
+        <div class="form-field">
+          <label for="directors">Directors (comma-separated)</label>
+          <input type="text" id="directors" name="directors" 
+                 placeholder="Director One, Director Two" />
+        </div>
+
+        <div class="form-field">
+          <label for="production-companies">Production Companies (comma-separated)</label>
+          <input type="text" id="production-companies" name="productionCompanies" 
+                 placeholder="Company One, Company Two" />
+        </div>
+
+        <div class="form-field">
+          <label for="channel">Channel (for TV)</label>
+          <input type="text" id="channel" name="channel" placeholder="HBO, Netflix, etc." />
+        </div>
+
+        <!-- Tags and Themes -->
+        <div class="form-field">
+          <label for="tags">Tags (comma-separated)</label>
+          <input type="text" id="tags" name="tags" 
+                 placeholder="sci-fi, action, drama" />
+        </div>
+
+        <div class="form-field">
+          <label for="themes">Themes (comma-separated)</label>
+          <input type="text" id="themes" name="themes" 
+                 placeholder="identity, technology, rebellion" />
+        </div>
+
+        <!-- Content -->
+        <div class="form-field full-width">
+          <label for="body">Review Content</label>
+          <textarea id="body" name="body" rows="10" 
+                    placeholder="Write your review here..."></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit">Create Review</button>
+        <button type="reset">Reset</button>
+      </div>
+
+      <p id="review-create-status" class="status" aria-live="polite"></p>
+    </form>
+  </details>
+</section>
+
+<style>
+  .create {
+    margin: var(--space-8) 0;
+    padding: var(--space-6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-4);
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .form-field.full-width {
+    grid-column: 1 / -1;
+  }
+
+  label {
+    font-weight: 500;
+    font-size: var(--text-sm);
+  }
+
+  input, select, textarea {
+    padding: var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 120px;
+  }
+
+  .tmdb-section, .tv-fields {
+    grid-column: 1 / -1;
+    padding: var(--space-4);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius);
+    background: var(--background-muted);
+  }
+
+  .search-row {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .search-row input {
+    flex: 1;
+  }
+
+  .tmdb-results {
+    margin-top: var(--space-4);
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .tmdb-result-item {
+    padding: var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: var(--space-2);
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .tmdb-result-item:hover {
+    background-color: var(--background-muted);
+  }
+
+  .tmdb-result-item.selected {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+  }
+
+  .cast-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .cast-search {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .cast-search input {
+    flex: 1;
+  }
+
+  .cast-results {
+    margin-top: var(--space-2);
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--background-muted);
+  }
+
+  .cast-result-item {
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .cast-result-item:hover {
+    background-color: var(--background);
+  }
+
+  .cast-result-item:last-child {
+    border-bottom: none;
+  }
+
+  .cast-result-item.exists {
+    background-color: var(--success-bg);
+    color: var(--success-fg);
+  }
+
+  .selected-cast {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    min-height: 40px;
+    padding: var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--background-muted);
+  }
+
+  .cast-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    background: var(--accent);
+    color: var(--accent-foreground);
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+  }
+
+  .cast-tag button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: var(--text-sm);
+    padding: 0;
+    margin-left: var(--space-1);
+  }
+
+  .cast-tag button:hover {
+    opacity: 0.7;
+  }
+
+  .form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+  }
+
+  .status {
+    grid-column: 1 / -1;
+    margin-top: var(--space-4);
+    padding: var(--space-2);
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+  }
+
+  .status[style*="#f87171"] {
+    background-color: #fef2f2;
+    color: #dc2626;
+  }
+
+  .status[style*="#4ade80"] {
+    background-color: #f0fdf4;
+    color: #16a34a;
+  }
+</style>
+
+<script>
+  const form = document.getElementById('review-create-form') as HTMLFormElement;
+  const statusEl = document.getElementById('review-create-status') as HTMLParagraphElement;
+  const categorySelect = document.getElementById('category') as HTMLSelectElement;
+  const tmdbSection = document.getElementById('tmdb-section') as HTMLDivElement;
+  const tvFields = document.getElementById('tv-fields') as HTMLDivElement;
+  const tmdbSearch = document.getElementById('tmdb-search') as HTMLInputElement;
+  const tmdbSearchBtn = document.getElementById('tmdb-search-btn') as HTMLButtonElement;
+  const tmdbResults = document.getElementById('tmdb-results') as HTMLDivElement;
+  const tmdbIdInput = document.getElementById('tmdb-id') as HTMLInputElement;
+  
+  // Cast search elements
+  const castSearch = document.getElementById('cast-search') as HTMLInputElement;
+  const castSearchBtn = document.getElementById('cast-search-btn') as HTMLButtonElement;
+  const castResults = document.getElementById('cast-results') as HTMLDivElement;
+  const selectedCast = document.getElementById('selected-cast') as HTMLDivElement;
+  const castInput = document.getElementById('cast') as HTMLInputElement;
+  
+  // Track selected cast members
+  let selectedCastMembers: any[] = [];
+
+  // Show/hide TMDB and TV fields based on category
+  categorySelect.addEventListener('change', () => {
+    const category = categorySelect.value;
+    tmdbSection.style.display = (category === 'movie' || category === 'tv') ? 'block' : 'none';
+    tvFields.style.display = category === 'tv' ? 'block' : 'none';
+    
+    // Clear TMDB fields when category changes
+    if (category !== 'movie' && category !== 'tv') {
+      tmdbIdInput.value = '';
+      tmdbResults.innerHTML = '';
+      tmdbResults.style.display = 'none';
+    }
+  });
+
+  // TMDB search functionality
+  tmdbSearchBtn.addEventListener('click', async () => {
+    const query = tmdbSearch.value.trim();
+    const category = categorySelect.value as 'movie' | 'tv';
+    
+    if (!query || !category) return;
+
+    try {
+      const response = await fetch(`/_actions/searchTMDB`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, category })
+      });
+
+      const responseText = await response.text();
+      
+      let results = [];
+      try {
+        // Parse as Astro Actions format
+        const parsed = JSON.parse(responseText);
+        if (Array.isArray(parsed) && parsed.length >= 1) {
+          // The JSON string is in the first position
+          const actualData = parsed[0];
+          if (typeof actualData === 'string') {
+            // If it's a string, parse it as JSON
+            results = JSON.parse(actualData);
+          } else {
+            results = actualData || [];
+          }
+        } else if (typeof parsed === 'string') {
+          // If it's directly a JSON string, parse it
+          results = JSON.parse(parsed);
+        } else {
+          results = parsed || [];
+        }
+      } catch (e) {
+        console.error('Failed to parse TMDB response:', e);
+        console.log('Raw response:', responseText);
+        results = [];
+      }
+      
+      if (results.length === 0) {
+        tmdbResults.innerHTML = '<p>No results found.</p>';
+      } else {
+        tmdbResults.innerHTML = results.map((item: any) => `
+          <div class="tmdb-result-item" data-tmdb-id="${item.id}" data-title="${item.title || item.name}" data-year="${item.release_date?.slice(0, 4) || item.first_air_date?.slice(0, 4)}">
+            <strong>${item.title || item.name}</strong> (${item.release_date?.slice(0, 4) || item.first_air_date?.slice(0, 4)})
+            ${item.overview ? `<br><small>${item.overview.slice(0, 100)}...</small>` : ''}
+          </div>
+        `).join('');
+
+        // Add click handlers to results
+        tmdbResults.querySelectorAll('.tmdb-result-item').forEach(item => {
+          item.addEventListener('click', () => {
+            // Remove previous selection
+            tmdbResults.querySelectorAll('.tmdb-result-item').forEach(el => 
+              el.classList.remove('selected')
+            );
+            
+            // Select this item
+            item.classList.add('selected');
+            
+            // Fill form fields
+            const tmdbId = (item as HTMLElement).dataset.tmdbId;
+            const title = (item as HTMLElement).dataset.title;
+            const year = (item as HTMLElement).dataset.year;
+            
+            tmdbIdInput.value = tmdbId || '';
+            
+            // Auto-fill title if empty
+            const titleInput = document.getElementById('title') as HTMLInputElement;
+            if (!titleInput.value && title) {
+              titleInput.value = title;
+            }
+            
+            // Auto-fill slug if empty (basic conversion without year)
+            const slugInput = document.getElementById('slug') as HTMLInputElement;
+            if (!slugInput.value && title) {
+              const slugBase = title.toLowerCase().replace(/[^a-z0-9\s-]/g, '-').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+              slugInput.value = slugBase;
+            }
+          });
+        });
+      }
+      
+      tmdbResults.style.display = 'block';
+    } catch (error) {
+      console.error('TMDB search error:', error);
+      tmdbResults.innerHTML = '<p>Error searching TMDB.</p>';
+      tmdbResults.style.display = 'block';
+    }
+  });
+
+  // Cast search functionality
+  castSearchBtn.addEventListener('click', async () => {
+    const query = castSearch.value.trim();
+    
+    if (!query) return;
+
+    try {
+      const response = await fetch(`/_actions/searchActors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      });
+
+      const responseText = await response.text();
+      
+      let results = [];
+      try {
+        const parsed = JSON.parse(responseText);
+        if (Array.isArray(parsed) && parsed.length >= 1) {
+          const actualData = parsed[0];
+          if (typeof actualData === 'string') {
+            results = JSON.parse(actualData);
+          } else {
+            results = actualData || [];
+          }
+        } else if (typeof parsed === 'string') {
+          results = JSON.parse(parsed);
+        } else {
+          results = parsed || [];
+        }
+      } catch (e) {
+        console.error('Failed to parse actor search response:', e);
+        results = [];
+      }
+      
+      if (results.length === 0) {
+        castResults.innerHTML = '<p>No actors found.</p>';
+      } else {
+        castResults.innerHTML = results.map((actor: any) => `
+          <div class="cast-result-item ${actor.exists ? 'exists' : ''}" data-actor-id="${actor.id}" data-actor-name="${actor.name}" data-actor-exists="${actor.exists}">
+            <strong>${actor.name}</strong> ${actor.exists ? '(in collection)' : ''}
+            ${actor.known_for ? `<br><small>Known for: ${actor.known_for}</small>` : ''}
+          </div>
+        `).join('');
+
+        // Add click handlers to results
+        castResults.querySelectorAll('.cast-result-item').forEach(item => {
+          item.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent form submission
+            
+            const actorId = (item as HTMLElement).dataset.actorId;
+            const actorName = (item as HTMLElement).dataset.actorName;
+            const actorExists = (item as HTMLElement).dataset.actorExists === 'true';
+            
+            // Check if already selected
+            if (selectedCastMembers.some(member => member.id === actorId)) {
+              return;
+            }
+            
+            // Add to selected cast (backend will handle enrichment)
+            selectedCastMembers.push({
+              id: actorId,
+              name: actorName,
+              exists: actorExists
+            });
+            
+            updateSelectedCastDisplay();
+          });
+        });
+      }
+      
+      castResults.style.display = 'block';
+    } catch (error) {
+      console.error('Actor search error:', error);
+      castResults.innerHTML = '<p>Error searching actors.</p>';
+      castResults.style.display = 'block';
+    }
+  });
+
+  // Update selected cast display
+  function updateSelectedCastDisplay() {
+    selectedCast.innerHTML = selectedCastMembers.map(member => `
+      <div class="cast-tag">
+        ${member.name}
+        <button type="button" onclick="removeCastMember('${member.id}')">×</button>
+      </div>
+    `).join('');
+    
+    // Update hidden input
+    castInput.value = selectedCastMembers.map(member => member.id).join(',');
+  }
+
+  // Remove cast member
+  (window as any).removeCastMember = function(actorId: string) {
+    selectedCastMembers = selectedCastMembers.filter(member => member.id !== actorId);
+    updateSelectedCastDisplay();
+  };
+
+  // Form submission
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    statusEl.textContent = 'Saving...';
+
+    try {
+      const fd = new FormData(form);
+      const rawData = Object.fromEntries(fd.entries());
+
+      // Transform array fields and optional fields
+      const payload: any = {
+        slug: rawData.slug as string,
+        title: rawData.title as string,
+        subtitle: rawData.subtitle ? rawData.subtitle as string : undefined,
+        category: rawData.category as string,
+        pubDate: rawData.pubDate as string,
+        url: rawData.url ? rawData.url as string : undefined,
+        imdbId: rawData.imdbId ? rawData.imdbId as string : undefined,
+        imdbRating: rawData.imdbRating ? parseFloat(rawData.imdbRating as string) : undefined,
+        rottenTomatoesId: rawData.rottenTomatoesId ? rawData.rottenTomatoesId as string : undefined,
+        rottenTomatoesRating: rawData.rottenTomatoesRating ? parseInt(rawData.rottenTomatoesRating as string, 10) : undefined,
+        channel: rawData.channel ? rawData.channel as string : undefined,
+        body: rawData.body ? rawData.body as string : undefined,
+      };
+
+      // Add numeric fields
+      if (rawData.season) payload.season = parseInt(rawData.season as string, 10);
+      if (rawData.episode) payload.episode = parseInt(rawData.episode as string, 10);
+      if (rawData.episodes) payload.episodes = parseInt(rawData.episodes as string, 10);
+      if (rawData.tmdbId) payload.tmdbId = parseInt(rawData.tmdbId as string, 10);
+
+      // Add array fields
+      if (rawData.writers) payload.writers = (rawData.writers as string).split(',').map(w => w.trim()).filter(w => w);
+      if (rawData.directors) payload.directors = (rawData.directors as string).split(',').map(d => d.trim()).filter(d => d);
+      if (rawData.productionCompanies) payload.productionCompanies = (rawData.productionCompanies as string).split(',').map(p => p.trim()).filter(p => p);
+      if (rawData.tags) payload.tags = (rawData.tags as string).split(',').map(t => t.trim()).filter(t => t);
+      if (rawData.themes) payload.themes = (rawData.themes as string).split(',').map(t => t.trim()).filter(t => t);
+      
+      // Add cast field from selected cast members
+      if (rawData.cast && typeof rawData.cast === 'string') {
+        payload.cast = rawData.cast.split(',').filter(id => id.trim());
+      } else if (rawData.cast && Array.isArray(rawData.cast)) {
+        payload.cast = rawData.cast.map(id => id.toString());
+      }
+
+      const { actions } = await import('astro:actions');
+      const { data, error } = await actions.createReview(payload);
+
+      if (error) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = `Error: ${error.message}`;
+      } else if (data.success) {
+        statusEl.style.color = '#4ade80';
+        statusEl.textContent = `Saved ${data.id}`;
+
+        // Reload triggers fresh fs.readdir() in the index page
+        setTimeout(() => window.location.reload(), 800);
+      }
+    } catch (err) {
+      statusEl.style.color = '#f87171';
+      statusEl.textContent = 'Unexpected error. Check the console.';
+      console.error(err);
+    }
+  });
+</script>

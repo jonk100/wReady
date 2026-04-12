@@ -1,0 +1,550 @@
+---
+export type Props = {
+  /** Optional prefill values */
+  initial?: {
+    slug?: string;
+    title?: string;
+    type?: 'poem' | 'short-story' | 'dream';
+    form?: string;
+    set?: string;
+    companionProject?: string;
+    wordCount?: string;
+    themes?: string;
+    status?: string;
+    writtenAt?: string;
+    body?: string;
+  };
+};
+
+const { initial } = Astro.props as Props;
+
+const initialSlug = initial?.slug ?? "";
+const initialTitle = initial?.title ?? "";
+const initialType = initial?.type ?? "poem";
+const initialForm = initial?.form ?? "";
+const initialSet = initial?.set ?? "";
+const initialCompanionProject = initial?.companionProject ?? "";
+const initialWordCount = initial?.wordCount ?? "";
+const initialThemes = JSON.stringify(initial?.themes ?? []);
+const initialStatus = initial?.status ?? "draft";
+const initialWrittenAt = initial?.writtenAt ?? "";
+const initialBody = initial?.body ?? "";
+---
+
+<section class="create">
+  <details>
+    <summary class="create-summary">
+      <div class="create-summary-content">
+        <button class="create-reset-btn" type="button" title="Reset form">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+          </svg>
+        </button>
+
+        <span class="create-summary-text">Add a new writing</span>
+
+        <button class="create-toggle-btn" type="button" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+    </summary>
+
+    <form id="writing-create-form" class="form">
+
+      <!-- Basic Info -->
+      <div class="section-group">
+        <h3 class="section-title">Basic Information</h3>
+
+        <div class="row">
+          <label>
+            <span>Title</span>
+            <input name="title" type="text" required value={initialTitle} placeholder="Writing title" />
+          </label>
+
+          <label>
+            <span>Type</span>
+            <select name="type" required>
+              <option value="poem" selected={initialType === "poem"}>Poem</option>
+              <option value="short-story" selected={initialType === "short-story"}>Short Story</option>
+              <option value="dream" selected={initialType === "dream"}>Dream</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- Poem-specific fields -->
+        <div class="row poem-fields" id="poem-fields">
+          <label class="grow">
+            <span>Form (optional)</span>
+            <input name="form" type="text" value={initialForm} placeholder="Sonnet, Haiku, Free verse, etc." />
+          </label>
+        </div>
+
+        <!-- Short Story-specific fields -->
+        <div class="row short-story-fields" id="short-story-fields" style="display: none;">
+          <label>
+            <span>Word Count (optional)</span>
+            <input name="wordCount" type="number" min="1" value={initialWordCount} placeholder="1500" />
+          </label>
+
+          <label class="grow">
+            <span>Companion Project (optional)</span>
+            <input name="companionProject" type="text" value={initialCompanionProject} placeholder="project-slug" />
+          </label>
+        </div>
+
+        <!-- Dream-specific fields -->
+        <div class="row dream-fields" id="dream-fields" style="display: none;">
+          <label>
+            <span>Word Count (optional)</span>
+            <input name="wordCount" type="number" min="1" value={initialWordCount} placeholder="1500" />
+          </label>
+
+          <label class="grow">
+            <span>Companion Project (optional)</span>
+            <input name="companionProject" type="text" value={initialCompanionProject} placeholder="project-slug" />
+          </label>
+        </div>
+      </div>
+
+      <!-- Optional Fields -->
+      <div class="section-group">
+        <h3 class="section-title">Optional</h3>
+
+        <div class="row">
+          <label>
+            <span>Set (optional)</span>
+            <input name="set" type="text" value={initialSet} placeholder="set-slug" />
+          </label>
+
+          <label>
+            <span>Status</span>
+            <select name="status">
+              <option value="draft" selected={initialStatus === "draft"}>Draft</option>
+              <option value="revised" selected={initialStatus === "revised"}>Revised</option>
+              <option value="complete" selected={initialStatus === "complete"}>Complete</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="grow">
+            <span>Themes (JSON, optional)</span>
+            <input name="themes" type="text" value={initialThemes} placeholder='["love", "loss", "nature"]' />
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="grow">
+            <span>Written At (optional)</span>
+            <input name="writtenAt" type="date" value={initialWrittenAt} />
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="grow">
+            <span>Content</span>
+            <textarea name="body" rows="12" placeholder="Write your poem or short story here…">{initialBody}</textarea>
+          </label>
+        </div>
+      </div>
+
+      <!-- Slug -->
+      <div class="row">
+        <label class="grow">
+          <span>Slug (auto-generated)</span>
+          <input name="slug" type="text" value={initialSlug} placeholder="writing-title" />
+          <small>Auto-generated from title if empty</small>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button type="submit">Create writing</button>
+      </div>
+
+      <p id="writing-create-status" class="status" aria-live="polite"></p>
+
+    </form>
+  </details>
+</section>
+
+<script>
+  // ---------------------------------------------------------------------------
+  // Element refs
+  // ---------------------------------------------------------------------------
+
+  const form = document.getElementById("writing-create-form") as HTMLFormElement;
+  const statusEl = document.getElementById("writing-create-status") as HTMLParagraphElement;
+  const toggleBtn = document.querySelector(".create-toggle-btn") as HTMLButtonElement;
+  const resetBtn = document.querySelector(".create-reset-btn") as HTMLButtonElement;
+  const details = document.querySelector("details") as HTMLDetailsElement;
+  const titleField = form.querySelector('input[name="title"]') as HTMLInputElement;
+  const slugField = form.querySelector('input[name="slug"]') as HTMLInputElement;
+  const typeSelect = form.querySelector('select[name="type"]') as HTMLSelectElement;
+  const poemFields = document.getElementById("poem-fields") as HTMLDivElement;
+  const shortStoryFields = document.getElementById("short-story-fields") as HTMLDivElement;
+  const dreamFields = document.getElementById("dream-fields") as HTMLDivElement;
+
+  // ---------------------------------------------------------------------------
+  // Type field switching
+  // ---------------------------------------------------------------------------
+
+  function updateTypeFields() {
+    const type = typeSelect.value;
+    if (type === "poem") {
+      poemFields.style.display = "flex";
+      shortStoryFields.style.display = "none";
+      dreamFields.style.display = "none";
+    } else if (type === "dream") {
+      poemFields.style.display = "none";
+      shortStoryFields.style.display = "none";
+      dreamFields.style.display = "flex";
+    } else {
+      poemFields.style.display = "none";
+      shortStoryFields.style.display = "flex";
+      dreamFields.style.display = "none";
+    }
+  }
+
+  typeSelect.addEventListener("change", updateTypeFields);
+  updateTypeFields(); // Initialize on load
+
+  // ---------------------------------------------------------------------------
+  // Details toggle
+  // ---------------------------------------------------------------------------
+
+  function syncToggle(): void {
+    toggleBtn.setAttribute("aria-expanded", String(details.open));
+  }
+
+  toggleBtn.addEventListener("click", (e: MouseEvent) => {
+    e.preventDefault();
+    details.open = !details.open;
+    syncToggle();
+  });
+
+  details.addEventListener("toggle", syncToggle);
+  syncToggle();
+
+  // ---------------------------------------------------------------------------
+  // Reset
+  // ---------------------------------------------------------------------------
+
+  resetBtn.addEventListener("click", (e: MouseEvent) => {
+    e.preventDefault();
+    form.reset();
+    updateTypeFields();
+    setStatus("Form reset.");
+    setTimeout(() => {
+      setStatus("");
+    }, 1500);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Status helper
+  // ---------------------------------------------------------------------------
+
+  function setStatus(msg: string): void {
+    statusEl.textContent = msg;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Slug auto-generation
+  // ---------------------------------------------------------------------------
+
+  function generateSlug(): void {
+    if (slugField.value) return;
+    const title = titleField.value.trim();
+    if (!title) return;
+    slugField.value =
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-") + "-0";
+  }
+
+  titleField.addEventListener("input", generateSlug);
+
+  // ---------------------------------------------------------------------------
+  // Form submit
+  // ---------------------------------------------------------------------------
+
+  form.addEventListener("submit", async (e: SubmitEvent): Promise<void> => {
+    e.preventDefault();
+    setStatus("Working…");
+
+    const formData = new FormData(form);
+    const rawData = Object.fromEntries(formData.entries());
+
+    try {
+      // Import actions dynamically for Astro compatibility
+      const { actions } = await import('astro:actions');
+      
+      // Prepare JSON payload for the action
+      const payload = {
+        slug: rawData.slug as string,
+        title: rawData.title as string,
+        form: rawData.form ? rawData.form as string : undefined,
+        set: rawData.set ? rawData.set as string : undefined,
+        companionProject: rawData.companionProject ? rawData.companionProject as string : undefined,
+        wordCount: rawData.wordCount ? parseInt(rawData.wordCount as string, 10) : undefined,
+        themes: rawData.themes ? JSON.parse(rawData.themes as string || "[]") : undefined,
+        status: rawData.status as string || "draft",
+        writtenAt: rawData.writtenAt ? rawData.writtenAt as string : undefined,
+        body: rawData.body ? rawData.body as string : undefined,
+      };
+
+      // Call the appropriate action based on type
+      const type = rawData.type as string;
+      let result;
+      
+      if (type === "poem") {
+        const { data, error } = await actions.createPoem(payload);
+        result = { data, error };
+      } else if (type === "dream") {
+        const { data, error } = await actions.createDream(payload);
+        result = { data, error };
+      } else {
+        const { data, error } = await actions.createShortStory(payload);
+        result = { data, error };
+      }
+
+      if (result.error) {
+        setStatus(`Error: ${result.error.message || "Action failed"}`);
+        return;
+      }
+
+      if (result.data) {
+        setStatus(`Success: ${result.data.message || `Writing ${result.data.id} created`}`);
+
+        if (result.data.success) {
+          form.reset();
+          updateTypeFields();
+          
+          // This is the magic part: reload after successful action
+          // to trigger fresh content rendering
+          setTimeout(() => {
+            window.location.reload();
+          }, 800);
+        }
+      }
+
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : String(err));
+    }
+  });
+</script>
+
+<style>
+  .create {
+    margin-bottom: var(--space-8);
+    border: 1px solid #3a300f;
+    border-radius: 6px;
+    background: #1a1508;
+    color: #d4bb88;
+    font-family: "Courier New", "Courier", monospace;
+    overflow: hidden;
+  }
+
+  .create-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px 6px;
+    border-bottom: 1px solid #3a300f;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+
+  .create-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .create-summary-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .create-summary-text {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.85rem;
+    font-weight: 400;
+    letter-spacing: .15em;
+    color: #d4bb88;
+    text-align: center;
+    text-transform: uppercase;
+    flex: 1;
+  }
+
+  .create-reset-btn {
+    background: transparent;
+    border: 1px solid #3a300f;
+    border-radius: 50%;
+    color: #7a6a44;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .create-reset-btn:hover {
+    color: #e8a030;
+    border-color: #c8922a;
+  }
+
+  .create-toggle-btn {
+    background: transparent;
+    border: 1px solid #3a300f;
+    border-radius: 50%;
+    color: #7a6a44;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, transform 0.15s;
+    flex-shrink: 0;
+  }
+
+  .create-toggle-btn:hover {
+    color: #e8a030;
+    border-color: #c8922a;
+  }
+
+  details[open] .create-toggle-btn {
+    transform: rotate(180deg);
+  }
+
+  .form {
+    margin-top: var(--space-4);
+    padding: 14px 20px 20px;
+    display: grid;
+    gap: var(--space-4);
+    background: var(--surface-subtle);
+    border-top: 1px solid #3a300f;
+  }
+
+  .section-group {
+    margin-bottom: var(--space-6);
+  }
+
+  .section-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #e8a030;
+    margin: 0 0 var(--space-3) var(--space-2);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+  }
+
+  .row {
+    display: flex;
+    gap: var(--space-4);
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  label {
+    display: grid;
+    gap: var(--space-2);
+    min-width: 220px;
+  }
+
+  .grow {
+    flex: 1;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+  }
+
+  select {
+    font-family: var(--font-body) !important;
+    font-size: var(--text-base) !important;
+    color: var(--text-primary) !important;
+    background: var(--bg-raised) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.5rem 0.75rem !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    appearance: none !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M6 9l6 6M6 6l6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 1rem !important;
+    padding-right: 2.5rem !important;
+    cursor: pointer;
+  }
+
+  select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(232, 197, 71, 0.1);
+  }
+
+  select option {
+    background: var(--bg-raised);
+    color: var(--text-primary);
+    padding: 0.5rem;
+  }
+
+  textarea {
+    font-family: var(--font-mono);
+    resize: vertical;
+    min-height: 120px;
+  }
+
+  small {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: #7a6a44;
+    line-height: 1.3;
+  }
+
+  .actions {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+  }
+
+  button[type="submit"] {
+    padding: 0.6rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--accent);
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .status {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .output span {
+    font-weight: 700;
+  }
+</style>

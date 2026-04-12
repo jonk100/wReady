@@ -1,0 +1,174 @@
+---
+/**
+ * WritingsFilter.astro
+ * 
+ * Filter component for the writings index page. Allows filtering by:
+ * - Collection type (poems, short-stories, dreams)
+ * - Sets (groups of related writings)
+ */
+
+interface Props {
+  writings: any[];
+}
+
+const { writings } = Astro.props;
+
+// Extract unique collection types
+const collectionTypes = [...new Set(writings.map(writing => writing.collection))];
+
+// Extract unique sets from writings that have them
+const writingsWithSets = writings.filter(writing => writing.data.set);
+const uniqueSets = [...new Set(writingsWithSets.map(writing => writing.data.set))].sort();
+---
+
+<div class="writings-filter">
+  <div class="filter-group">
+    <label for="collection-filter">Collection:</label>
+    <select id="collection-filter">
+      <option value="">All Collections</option>
+      {collectionTypes.map(type => (
+        <option value={type}>
+          {type === 'poems' ? 'Poems' : 
+           type === 'short-stories' ? 'Short Stories' : 
+           type === 'dreams' ? 'Dreams' : type}
+        </option>
+      ))}
+    </select>
+  </div>
+
+  <div class="filter-group">
+    <label for="set-filter">Set:</label>
+    <select id="set-filter">
+      <option value="">All Sets</option>
+      {uniqueSets.map(set => (
+        <option value={set}>{set.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}</option>
+      ))}
+    </select>
+  </div>
+
+  <button id="clear-filters" class="clear-btn">Clear All</button>
+</div>
+
+<script>
+  // Filter functionality
+  const collectionFilter = document.getElementById('collection-filter') as HTMLSelectElement;
+  const setFilter = document.getElementById('set-filter') as HTMLSelectElement;
+  const clearBtn = document.getElementById('clear-filters') as HTMLButtonElement;
+  const writingCards = document.querySelectorAll('.poem-card, .short-story-card, .dream-card');
+
+  function filterWritings() {
+    const selectedCollection = collectionFilter.value;
+    const selectedSet = setFilter.value.toLowerCase();
+
+    writingCards.forEach((card: Element) => {
+      const cardElement = card as HTMLElement;
+      const listItem = cardElement.closest('li') as HTMLElement;
+      
+      // Get collection type from card class
+      const collectionMatch = !selectedCollection || 
+        cardElement.classList.contains(selectedCollection === 'poems' ? 'poem-card' :
+                                       selectedCollection === 'short-stories' ? 'short-story-card' :
+                                       selectedCollection === 'dreams' ? 'dream-card' : '');
+      
+      // Get set from card data attributes
+      const cardSet = cardElement.dataset.set || '';
+      const setMatch = !selectedSet || cardSet === selectedSet;
+
+      // Debug logging
+      if (selectedSet) {
+        console.log('Card:', cardElement.querySelector('.base-card__title')?.textContent);
+        console.log('Card set attribute:', cardSet);
+        console.log('Selected set:', selectedSet);
+        console.log('Match:', setMatch);
+      }
+
+      const shouldShow = collectionMatch && setMatch;
+      listItem.style.display = shouldShow ? 'block' : 'none';
+    });
+  }
+
+  function clearFilters() {
+    collectionFilter.value = '';
+    setFilter.value = '';
+    filterWritings();
+  }
+
+  // Event listeners
+  collectionFilter.addEventListener('change', filterWritings);
+  setFilter.addEventListener('change', filterWritings);
+  clearBtn.addEventListener('click', clearFilters);
+</script>
+
+<style>
+  .writings-filter {
+    display: flex;
+    gap: var(--space-4);
+    align-items: end;
+    padding: var(--space-6) 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--space-6);
+    flex-wrap: wrap;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 140px;
+  }
+
+  .filter-group label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .filter-group select {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+  }
+
+  .filter-group select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .filter-group select option {
+    background: var(--bg-card);
+    color: var(--text-primary);
+  }
+
+  .clear-btn {
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .clear-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-strong);
+  }
+
+  @media (max-width: 600px) {
+    .writings-filter {
+      gap: var(--space-3);
+    }
+    
+    .filter-group {
+      min-width: 120px;
+    }
+  }
+</style>

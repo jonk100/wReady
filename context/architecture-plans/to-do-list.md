@@ -1,87 +1,136 @@
 
-# Writty 5-Layer Migration Roadmap
+# Writty Live-Write Implementation Roadmap
 
-This `todo.md` is structured using the **Vertical Slice** strategy. It prioritizes setting up the global "plumbing" first, then executing one full 5-layer path for a simple collection (Chords) before moving on to the more complex narrative and media collections.
+This roadmap follows the **Live-Write Pattern** that's proven to work with chords, songs, and writings collections. It prioritizes establishing the live-write infrastructure first, then implementing collections in order of complexity.
 
-## Phase 0: The Global Framework
-*Establish the shared types and infrastructure that all layers will depend on.*
+## Phase 0: Live-Write Infrastructure
+*Establish the shared infrastructure that all live-write collections depend on.*
 
-- [x] **API Response Type:** Create `src/types/api.ts` to define a standard `ApiResponse<T>` envelope.
-- [x] **The "Hands" (Infra):** Create `src/utils/infra/fileOperator.ts` to centralize all `fs` operations (write, slug-check, directory creation).
-- [ ] **Domain Cleanup:** Rename `src/utils/music/` to `src/utils/domain/music/` and audit `musicTheory.ts` to ensure it remains a pure logic file.
-- [ ] **Environment Audit:** Update `.env` to use a unified `ALLOW_CONTENT_WRITE` flag.
-
----
-
-## Phase 1: Vertical Slice - Chords (Low Complexity)
-*A complete implementation of the 5-layer flow to test the architecture.*
-
-- [x] **Chord Shaper (Domain):** ~~Create `src/services/chords/chordShaper.ts` to transform raw form data into a Zod-compliant frontmatter object.~~ **REVISED:** Not needed - simplified to direct field mapping in service layer.
-- [x] **Chord Service (Service):** Create `src/services/chords/ChordService.ts` to orchestrate the shaper and the file operator.
-- [x] **API Refactor (Transport):** Rewrite `src/pages/api/chords/create.ts` to use the new service and return the shared API response type.
-- [x] **UI Update (Presentation):** Connect the Chord creation form to the new API endpoint.
-
-### Lessons Learned from Chords Implementation:
-1. **Contract Mismatch:** Initial service expected complex `ChordFormula` object but form sent flat strings. Fixed by simplifying service interface.
-2. **YAML Serialization Error:** `undefined` values in data caused gray-matter to fail. Fixed by filtering out `undefined` values before file writing.
-3. **Field Mapping:** Service must map form field names to schema field names exactly (e.g., `displayName` not `name`).
-4. **Event Integration:** Form needs event listeners to catch data from `ChordAnalyser` component.
-5. **Optional Fields:** Must handle optional fields (`barre`, `alternateNames`) consistently across all layers.
+- [x] **File Operations:** Create `src/utils/infra/fileOperator.ts` and `src/utils/infra/contentReader.ts` for centralized file system operations.
+- [x] **Actions Pattern:** Establish Astro Actions pattern in `src/actions/index.ts` instead of API routes.
+- [x] **Live-Write Template:** Create proven pattern for index pages using `fs.readdir()` + `gray-matter`.
+- [x] **Form Reload Pattern:** Establish `window.location.reload()` pattern for immediate content visibility.
 
 ---
 
-## Phase 2: Vertical Slice - Media & Enrichment (Medium Complexity)
-*Integrating external APIs and asset management into the service layer.*
+## Phase 1: Working Collections (Live-Write Pattern Proven)
+*Collections already successfully implemented with live-write.*
 
-- [ ] **Enrichment Infra:** Move `scripts/enrich-tmdb.ts` and `scripts/utils/download.ts` into `src/utils/infra/`.
-- [ ] **Review Service:** Create `src/services/reviews/ReviewService.ts`.
-    - Logic: Fetch TMDB -> Download Poster -> Shape Frontmatter -> Save.
-    - **IMPORTANT:** Apply lessons learned - filter undefined values, map fields exactly to schema
-- [ ] **Actor Service:** Create `src/services/actors/ActorService.ts` to handle automated headshot downloads and metadata.
-- [ ] **API Refactor:** Rewrite `src/pages/api/reviews/create.ts`.
-    - **NOTE:** Add `export const prerender = false;` to all API routes
-- [ ] **Review Form UI:** Create `src/components/reviews/ReviewCreateForm.astro` to handle TMDB search and manual data entry.
-    - **UX Features:** TMDB autocomplete search, poster preview, loading states, error handling
-    - **Content Editor:** Rich text area for review body/content with markdown preview
-- [ ] **Poster Preview Component:** Create `src/components/reviews/PosterPreview.astro` to show downloaded poster before saving
-- [ ] **TMDB Search Component:** Create `src/components/reviews/TMDBSearch.astro` for real-time movie/TV search with autocomplete
-- [ ] **Review Status Indicator:** Add visual feedback for enrichment steps (TMDB fetch, poster download, save)
+- [x] **Chords Collection:** Complete live-write implementation with form validation and chord analysis integration.
+- [x] **Songs Collection:** Complete live-write implementation with complex form fields and chord voicing references.
+- [x] **Writings Collection:** Complete live-write implementation for poems, short stories, and dreams with unified form.
+
+### Key Lessons from Working Collections:
+1. **Index Pages Must Read Directly:** `fs.readdir()` + `gray-matter` is essential for live updates.
+2. **Actions Over API Routes:** Astro Actions provide better integration and simpler error handling.
+3. **No fs.utimes():** Not needed when index pages read from disk directly.
+4. **Form Reload Timing:** 800-1000ms delay works reliably for content visibility.
+5. **Reference Handling:** String references work fine in cards; no need for complex object resolution.
 
 ---
 
-## Phase 3: Vertical Slice - Screenplay & Narrative (High Complexity)
-*Implementing internal cross-references and complex text analysis.*
+## Phase 2: Media & Enrichment Collections (Medium Complexity)
+*Collections requiring external API integration and asset management.*
 
-- [ ] **Script Analyst (Domain):** Create `src/utils/domain/screenplay/scriptAnalyst.ts` for Regex-based dialogue and page-count calculations.
-- [ ] **Character Subdirectory Logic:** Update the `CharacterService` to enforce project-based nesting (`content/characters/[project-slug]/`).
-- [ ] **Scene Service:** - Implement cross-collection validation (checking if Characters and Projects exist via Infra repos).
-    - Integrate the Script Analyst for automatic frontmatter stats.
-    - **CRITICAL:** Handle complex optional fields and references properly
-- [ ] **API Refactor:** Rewrite `src/pages/api/scenes/create.ts`.
+### Reviews Collection
+- [ ] **Content Config:** Ensure reviews use `glob()` loader (verify existing setup).
+- [ ] **Index Page:** Update `src/pages/reviews/index.astro` to use `fs.readdir()` pattern.
+- [ ] **Enrichment Infra:** Move TMDB and download utilities to `src/utils/infra/`.
+- [ ] **Review Service:** Create `src/services/reviews/ReviewService.ts` with TMDB enrichment.
+- [ ] **Actions:** Add `createReview` action to `src/actions/index.ts`.
+- [ ] **Review Form:** Create `src/components/reviews/ReviewCreateForm.astro` with TMDB search.
+- [ ] **Review Card:** Update `src/components/collection-cards/ReviewCard.astro` for live-write pattern.
 
----
-
-## Phase 4: Maintenance & Tooling
-*Cleaning up legacy code and finalizing the directory structure.*
-
-- [x] **API Route Prerender:** Add `export const prerender = false;` to all API routes (discovered during chord debugging)
-- [ ] **Script Migration:** Move `.zsh` generation scripts from `scripts/` to a new `bin/` or `tools/` directory.
-- [ ] **Legacy Cleanup:** Delete the `scripts/` folder once all TypeScript logic is safely inside `src/`.
-- [ ] **Project Reference Audit:** Ensure all `scenes` are using the new Astro 5 `reference()` type in their frontmatter.
-
----
-
-## Phase 5: UI Expansion (Post-Migration)
-*Adding "Smart" features once the backend engine is stable.*
-
-- [ ] **Live Editor Stats:** Import the **Domain** `scriptAnalyst.ts` into the `SceneCreateForm` for real-time line counting as the user types.
-- [x] **Chord Previewer:** ~~Use the **Domain** `musicTheory.ts` to render visual fretboard diagrams in the chord creation UI.~~ **EXISTING:** ChordAnalyser component already provides this functionality
-- [ ] **Tension Mapper:** Auto-generate tension graph coordinates during the `Beat` or `Scene` creation service.
+### Actors Collection  
+- [ ] **Content Config:** Ensure actors use `glob()` loader (verify existing setup).
+- [ ] **Index Page:** Update `src/pages/actors/index.astro` to use `fs.readdir()` pattern.
+- [ ] **Actor Service:** Create `src/services/actors/ActorService.ts` with headshot enrichment.
+- [ ] **Actions:** Add `createActor` action to `src/actions/index.ts`.
+- [ ] **Actor Form:** Create `src/components/actors/ActorCreateForm.astro` with image handling.
+- [ ] **Actor Card:** Update `src/components/collection-cards/ActorCard.astro` for live-write pattern.
 
 ---
 
-## Additional Requirements Discovered:
-- **Error Logging:** Add comprehensive logging to all services for debugging
-- **Event Integration:** Ensure forms can catch events from analyzer components
-- **Schema Validation:** Double-check all field mappings against content.config.ts
-- **Optional Field Handling:** Standardize approach to undefined value filtering across all services
+## Phase 3: Complex Narrative Collections (High Complexity)
+*Collections with cross-references and complex validation.*
+
+### Projects Collection
+- [ ] **Content Config:** Verify projects use `glob()` loader.
+- [ ] **Index Page:** Update `src/pages/projects/index.astro` to use `fs.readdir()` pattern.
+- [ ] **Project Service:** Create `src/services/projects/ProjectService.ts` with character list management.
+- [ ] **Actions:** Add `createProject` action to `src/actions/index.ts`.
+- [ ] **Project Form:** Create `src/components/projects/ProjectCreateForm.astro`.
+- [ ] **Project Card:** Update `src/components/collection-cards/ProjectCard.astro`.
+
+### Characters Collection
+- [ ] **Content Config:** Verify characters use `glob()` loader.
+- [ ] **Index Page:** Update `src/pages/characters/index.astro` to use `fs.readdir()` pattern.
+- [ ] **Character Service:** Create `src/services/characters/CharacterService.ts` with project validation.
+- [ ] **Actions:** Add `createCharacter` action to `src/actions/index.ts`.
+- [ ] **Character Form:** Create `src/components/characters/CharacterCreateForm.astro` with project selection.
+- [ ] **Character Card:** Update `src/components/collection-cards/CharacterCard.astro`.
+
+### Scenes Collection
+- [ ] **Content Config:** Verify scenes use `glob()` loader.
+- [ ] **Index Page:** Update `src/pages/scenes/index.astro` to use `fs.readdir()` pattern.
+- [ ] **Scene Service:** Create `src/services/scenes/SceneService.ts` with character/project validation.
+- [ ] **Actions:** Add `createScene` action to `src/actions/index.ts`.
+- [ ] **Scene Form:** Create `src/components/scenes/SceneCreateForm.astro` with rich text editor.
+- [ ] **Scene Card:** Update `src/components/collection-cards/SceneCard.astro`.
+
+---
+
+## Phase 4: Domain Logic & Advanced Features
+*Adding complex business logic while maintaining live-write pattern.*
+
+- [ ] **Music Theory Domain:** Create `src/utils/domain/musicTheory.ts` for chord/song validation.
+- [ ] **Script Analysis Domain:** Create `src/utils/domain/scriptAnalysis.ts` for scene calculations.
+- [ ] **Reference Validation:** Add cross-collection validation in services (e.g., characters exist in projects).
+- [ ] **Auto-Enrichment:** Integrate TMDB and other APIs into services for automatic metadata.
+- [ ] **Live Statistics:** Add real-time analysis to forms using domain logic.
+
+---
+
+## Phase 5: Cleanup & Optimization
+*Finalizing the live-write architecture and removing legacy code.*
+
+- [ ] **Legacy API Routes:** Remove old `src/pages/api/` routes replaced by Actions.
+- [ ] **Custom Loaders:** Remove any remaining custom loaders from `content.config.ts`.
+- [ ] **getCollection() Cleanup:** Replace any remaining `getCollection()` calls with `fs.readdir()` pattern.
+- [ ] **Performance Optimization:** Add caching for expensive operations in services.
+- [ ] **Error Handling:** Standardize error messages and logging across all services.
+
+---
+
+## Implementation Checklist for Each Collection
+
+When implementing a new collection, verify each of these:
+
+| # | Component | Check | Pass Condition |
+|---|---|---|---|
+| 1 | `content.config.ts` | Uses `glob()` loader | Yes |
+| 2 | Index Page | Reads with `fs.readdir` + `gray-matter` | Yes |
+| 3 | Index Page | Has `export const prerender = false` | Yes |
+| 4 | Action | `create[Collection]` defined in `actions/index.ts` | Yes |
+| 5 | Service | Uses `writeContentFile()` and `ContentReader.exists()` | Yes |
+| 6 | Service | Does NOT call `fs.utimes()` | Yes |
+| 7 | Form | Calls `actions.create[Collection]()` | Yes |
+| 8 | Form | Reloads on success with `window.location.reload()` | Yes |
+
+---
+
+## Quick Reference Commands
+
+### Create a New Collection:
+1. Add to `content.config.ts` with `glob()` loader
+2. Update index page with `fs.readdir()` pattern  
+3. Add action to `src/actions/index.ts`
+4. Create service in `src/services/[collection]/`
+5. Create form component
+6. Update/create card component
+
+### Debug Live-Write Issues:
+- Check index page uses `fs.readdir()` not `getCollection()`
+- Verify service doesn't call `fs.utimes()`
+- Ensure form reloads with proper timing
+- Check action returns proper success/error format

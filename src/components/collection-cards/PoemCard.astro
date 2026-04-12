@@ -30,6 +30,7 @@ if (data.writtenAt) {
   badge="Poem"
   badgeColor="var(--accent-purple)"
   class="poem-card"
+  dataSet={typeof data.set === 'string' ? data.set : ''}
 />
 
 <style>

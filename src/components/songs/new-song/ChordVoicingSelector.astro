@@ -1,0 +1,582 @@
+---
+/**
+ * ChordVoicingSelector.astro
+ *
+ * A self-contained chord search + selection widget.
+ *
+ * Responsibilities:
+ *  - Fetches chords from /api/chords/search as the user types
+ *  - Colours each result by its harmonic function in the current key
+ *  - Maintains a local list of selected chord voicings
+ *  - Dispatches a `chord-voicings-change` CustomEvent on the component
+ *    root whenever the selection changes, so the parent form can write
+ *    the value into its hidden <input name="chordVoicings"> field
+ *
+ * Props:
+ *  @prop {string[]} initialVoicings  - Pre-selected chord slugs (e.g. from edit mode)
+ *  @prop {string}   keyRoot          - Starting key root (e.g. "C"). Parent should
+ *                                      keep the `data-key-root` attribute in sync when
+ *                                      the user changes the key select.
+ *
+ * Event emitted:
+ *  chord-voicings-change — detail: { slugs: string[] }
+ *
+ * Usage in parent:
+ *  <ChordVoicingSelector initialVoicings={[]} keyRoot={initialKeyRoot} />
+ *  <input name="chordVoicings" type="hidden" id="chord-voicings-hidden" value="[]" />
+ *
+ *  // In parent <script>:
+ *  document.querySelector('chord-voicing-selector')
+ *    ?.addEventListener('chord-voicings-change', (e) => {
+ *      hiddenInput.value = JSON.stringify(e.detail.slugs);
+ *    });
+ */
+
+export interface Props {
+  /** Pre-selected chord slugs; used when editing an existing song */
+  initialVoicings?: string[];
+  /** Current song key root — used to colour-code chord function */
+  keyRoot?: string;
+}
+
+const { initialVoicings = [], keyRoot = "C" } = Astro.props;
+---
+
+<div
+  class="chord-voicing-selector"
+  data-key-root={keyRoot}
+  data-initial={JSON.stringify(initialVoicings)}
+>
+  <input
+    id="cvs-input"
+    class="cvs-input"
+    type="text"
+    placeholder="Type chord name (e.g., am, g, c)"
+    autocomplete="off"
+  />
+
+  <!-- Dropdown populated by JS -->
+  <div id="cvs-dropdown" class="cvs-dropdown" style="display:none"></div>
+
+  <!-- Selected chord tags rendered by JS -->
+  <div id="cvs-selected" class="cvs-selected"></div>
+</div>
+
+<script>
+  import { DIATONIC_MAJOR_MAP } from "../../../utils/domain/musicTheory";
+
+  (() : void => {
+
+  // ---------------------------------------------------------------------------
+  // Types
+  // ---------------------------------------------------------------------------
+
+  /** Shape returned by /api/chords/search for a single chord */
+  interface ChordOption {
+    slug: string;
+    displayName: string;
+    voicingLabel: string;
+  }
+
+  /** RGB colour triple used to style chord tags by harmonic function */
+  interface ChordColors {
+    bg: string;
+    text: string;
+    border: string;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Root element & data attributes
+  // ---------------------------------------------------------------------------
+
+  const root = document.querySelector<HTMLElement>(".chord-voicing-selector");
+  if (!root) {
+    console.error("ChordVoicingSelector: root element not found");
+    return;
+  }
+
+  const input       = root.querySelector<HTMLInputElement>("#cvs-input")!;
+  const dropdown    = root.querySelector<HTMLDivElement>("#cvs-dropdown")!;
+  const selectedEl  = root.querySelector<HTMLDivElement>("#cvs-selected")!;
+
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
+
+  /** Currently selected chord voicings */
+  let selectedChords: ChordOption[] = [];
+
+  /** Debounce timer handle for the search input */
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // ---------------------------------------------------------------------------
+  // Key root helper
+  // (reads from data attribute so parent can update it reactively)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns the current song key root from the component's data attribute.
+   * The parent form is responsible for keeping this in sync when the user
+   * changes the keyRoot <select>.
+   */
+  function getKeyRoot(): string {
+    return root?.getAttribute("data-key-root") ?? "C";
+  }
+
+  // ---------------------------------------------------------------------------
+  // Music theory helpers
+  // ---------------------------------------------------------------------------
+
+  /** Chromatic note names using sharps — matches musicTheory.ts convention */
+  const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+  /**
+   * Strips quality suffixes ("m", "dim", "maj7" etc.) to get the bare root note.
+   * @param chordName - Raw chord display name, e.g. "Am", "Bm7", "C#dim"
+   */
+  function extractRoot(chordName: string): string {
+    // Take the first character; if the second is '#' or 'b', include it
+    const match = chordName.match(/^([A-G][#b]?)/);
+    return match ? match[1] : chordName;
+  }
+
+  /**
+   * Returns the diatonic degree and quality of a chord relative to the
+   * current song key, using the DIATONIC_MAJOR_MAP from musicTheory.ts.
+   *
+   * @param chordDisplayName - Display name of the chord (e.g. "Am voicing 1")
+   * @param keyRoot          - Current song root note (e.g. "C")
+   */
+  function getChordFunction(
+    chordDisplayName: string,
+    keyRoot: string
+  ): { degree: string; quality: string } {
+    const chordRoot = extractRoot(chordDisplayName.split(" ")[0]);
+
+    const keyIndex   = NOTES.indexOf(keyRoot);
+    const chordIndex = NOTES.indexOf(chordRoot);
+
+    if (keyIndex === -1 || chordIndex === -1) {
+      return { degree: "unknown", quality: "major" };
+    }
+
+    const interval      = (chordIndex - keyIndex + 12) % 12;
+    const diatonicIndex = Math.floor(interval / 2);
+
+    if (diatonicIndex >= 0 && diatonicIndex < DIATONIC_MAJOR_MAP.length) {
+      return DIATONIC_MAJOR_MAP[diatonicIndex];
+    }
+
+    return { degree: "unknown", quality: "major" };
+  }
+
+  /**
+   * Maps a harmonic degree (I, IV, V …) to a colour triple.
+   * @param fn - Return value of getChordFunction()
+   */
+  function getChordColors(fn: { degree: string; quality: string }): ChordColors {
+    const map: Record<string, ChordColors> = {
+      "I":    { bg: "#e8a030", text: "#1a1508", border: "#d4bb88" },
+      "ii":   { bg: "#7a6a44", text: "#d4bb88", border: "#a09060" },
+      "iii":  { bg: "#e8a0e8", text: "#1a1508", border: "#ff7aff" },
+      "IV":   { bg: "#3a9eff", text: "#1a1508", border: "#5ab3ff" },
+      "V":    { bg: "#e830a0", text: "#1a1508", border: "#ff5050" },
+      "vi":   { bg: "#a0e8a0", text: "#1a1508", border: "#7aff7a" },
+      "vii°": { bg: "#8a7a8a", text: "#1a1508", border: "#aaaaaa" },
+    };
+    return map[fn.degree] ?? { bg: "#3a300f", text: "#d4bb88", border: "#5a4a2f" };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Event dispatch
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Dispatches a `chord-voicings-change` CustomEvent on the root element.
+   * The parent form listens for this and writes the slugs into its hidden
+   * <input name="chordVoicings"> field before submission.
+   */
+  function dispatchChange(): void {
+    root?.dispatchEvent(
+      new CustomEvent<{ slugs: string[] }>("chord-voicings-change", {
+        bubbles: true,
+        detail: { slugs: selectedChords.map((c) => c.slug) },
+      })
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dropdown rendering
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Fetches matching chords from /api/chords/search and renders them
+   * in the dropdown. Debounced by handleInput().
+   */
+  async function updateDropdown(): Promise<void> {
+    const query = input.value.trim();
+
+    if (!query) {
+      dropdown.innerHTML = "";
+      dropdown.style.display = "none";
+      return;
+    }
+
+    dropdown.innerHTML = '<div class="cvs-no-results">Searching…</div>';
+    dropdown.style.display = "block";
+
+    try {
+      const res = await fetch(`/api/chords/search?q=${encodeURIComponent(query)}`);
+      if (!res.ok) throw new Error(`Search failed: ${res.status}`);
+
+      const json = (await res.json()) as { chords: ChordOption[] };
+      const results = json.chords;
+
+      if (results.length === 0) {
+        dropdown.innerHTML = '<div class="cvs-no-results">No chords found</div>';
+        return;
+      }
+
+      const keyRoot = getKeyRoot();
+
+      dropdown.innerHTML = results
+        .map((chord) => {
+          const fn     = getChordFunction(chord.displayName, keyRoot);
+          const colors = getChordColors(fn);
+
+          return `
+            <div class="cvs-option"
+                 data-slug="${chord.slug}"
+                 style="background:${colors.bg}; border-left:3px solid ${colors.border};">
+              <span class="cvs-option-name" style="color:${colors.text}">
+                ${chord.displayName} (${chord.voicingLabel})
+              </span>
+            </div>
+          `;
+        })
+        .join("");
+    } catch (err) {
+      dropdown.innerHTML = '<div class="cvs-no-results">Error loading chords</div>';
+      console.error("ChordVoicingSelector search error:", err);
+    }
+  }
+
+  /**
+   * Debounced input handler — waits 200 ms after last keystroke
+   * before firing the API fetch.
+   */
+  function handleInput(): void {
+    if (debounceTimer !== null) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(updateDropdown, 200);
+  }
+
+  input.addEventListener("input", handleInput);
+  input.addEventListener("focus", () => {
+    if (input.value.trim()) updateDropdown();
+  });
+
+  // ---------------------------------------------------------------------------
+  // Selection management
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Adds a chord to the selection (no-op if already present), then
+   * clears the search input, hides the dropdown, and re-renders tags.
+   * @param chord - The chord to add
+   */
+  function addChord(chord: ChordOption): void {
+    if (selectedChords.find((c) => c.slug === chord.slug)) return;
+    selectedChords.push(chord);
+    renderTags();
+    dispatchChange();
+    input.value = "";
+    dropdown.style.display = "none";
+  }
+
+  /**
+   * Removes a chord from the selection by slug, then re-renders tags.
+   * @param slug - Slug of the chord to remove
+   */
+  function removeChord(slug: string): void {
+    selectedChords = selectedChords.filter((c) => c.slug !== slug);
+    renderTags();
+    dispatchChange();
+  }
+
+  /**
+   * Re-renders all selected chord tags and re-attaches remove listeners.
+   * Inline styles carry the harmonic colour so Astro's scoped CSS isn't
+   * needed for dynamic colour values.
+   */
+  function renderTags(): void {
+    const keyRoot = getKeyRoot();
+
+    selectedEl.innerHTML = selectedChords
+      .map((chord) => {
+        const fn     = getChordFunction(chord.displayName, keyRoot);
+        const colors = getChordColors(fn);
+
+        return `
+          <div class="cvs-tag"
+               data-slug="${chord.slug}"
+               style="background:${colors.bg}; border:1px solid ${colors.border};">
+            <span class="cvs-tag-text" style="color:${colors.text}">
+              ${chord.displayName} (${chord.voicingLabel})
+            </span>
+            <button class="cvs-remove"
+                    type="button"
+                    data-slug="${chord.slug}"
+                    aria-label="Remove ${chord.displayName}"
+                    style="color:${colors.text};">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                   stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        `;
+      })
+      .join("");
+
+    // Re-attach remove listeners after every render
+    selectedEl.querySelectorAll<HTMLButtonElement>(".cvs-remove").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const slug = (e.currentTarget as HTMLButtonElement).dataset.slug!;
+        removeChord(slug);
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dropdown click — event delegation
+  // ---------------------------------------------------------------------------
+
+  dropdown.addEventListener("click", (e) => {
+    const option = (e.target as HTMLElement).closest<HTMLElement>(".cvs-option");
+    if (!option) return;
+
+    const slug        = option.dataset.slug!;
+    const displayName = option.querySelector(".cvs-option-name")?.textContent?.trim() ?? slug;
+
+    // voicingLabel is embedded in the displayName string "(label)" — parse it out
+    const labelMatch  = displayName.match(/\(([^)]+)\)$/);
+    const voicingLabel = labelMatch ? labelMatch[1] : "";
+    const cleanName    = displayName.replace(/\s*\([^)]+\)$/, "").trim();
+
+    addChord({ slug, displayName: cleanName, voicingLabel });
+  });
+
+  // Close dropdown when clicking outside this component
+  document.addEventListener("click", (e) => {
+    if (!root.contains(e.target as Node)) {
+      dropdown.style.display = "none";
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Initialise from prefill prop
+  // ---------------------------------------------------------------------------
+
+  /**
+   * If the component was rendered with pre-selected voicings (edit mode),
+   * resolves each slug via the search API to recover display data, then
+   * renders the initial tag list.
+   */
+  async function initFromPrefill(): Promise<void> {
+    const raw = root?.getAttribute("data-initial");
+    if (!raw || raw === "[]") return;
+
+    let slugs: string[];
+    try {
+      slugs = JSON.parse(raw) as string[];
+    } catch {
+      console.error("ChordVoicingSelector: failed to parse data-initial", raw);
+      return;
+    }
+
+    if (slugs.length === 0) return;
+
+    const resolved = await Promise.all(
+      slugs.map(async (slug): Promise<ChordOption> => {
+        try {
+          const res  = await fetch(`/api/chords/search?q=${encodeURIComponent(slug)}`);
+          const json = (await res.json()) as { chords: ChordOption[] };
+          return (
+            json.chords.find((c) => c.slug === slug) ?? {
+              slug,
+              displayName: slug,
+              voicingLabel: "Unknown",
+            }
+          );
+        } catch {
+          return { slug, displayName: slug, voicingLabel: "Unknown" };
+        }
+      })
+    );
+
+    selectedChords = resolved;
+    renderTags();
+    // Don't dispatch on init — the hidden input already has the correct value
+  }
+
+  initFromPrefill();
+
+  })();
+</script>
+
+<style>
+  /* -------------------------------------------------------------------------
+   * All class names are prefixed "cvs-" to avoid collisions when this
+   * component is embedded alongside other selectors.
+   * ------------------------------------------------------------------------- */
+
+  .chord-voicing-selector {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Search input */
+  .cvs-input {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid #3a300f;
+    background: #1a1508;
+    color: #d4bb88;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .cvs-input:focus {
+    outline: none;
+    border-color: #7a6a44;
+    box-shadow: 0 0 0 2px rgba(122, 106, 68, 0.2);
+  }
+
+  .cvs-input::placeholder {
+    color: #7a6a44;
+  }
+
+  /* Dropdown panel */
+  .cvs-dropdown {
+    position: absolute;
+    top: calc(100% - 8px); /* accounts for the gap */
+    left: 0;
+    right: 0;
+    background: #1a1508;
+    border: 1px solid #3a300f;
+    border-radius: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    margin-top: 4px;
+  }
+
+  .cvs-dropdown::-webkit-scrollbar        { width: 6px; }
+  .cvs-dropdown::-webkit-scrollbar-track  { background: #1a1508; }
+  .cvs-dropdown::-webkit-scrollbar-thumb  { background: #3a300f; border-radius: 3px; }
+  .cvs-dropdown::-webkit-scrollbar-thumb:hover { background: #4a401f; }
+
+  /* Individual dropdown result */
+  .cvs-option {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(58, 48, 15, 0.3);
+    transition: filter 0.15s ease, transform 0.15s ease;
+    display: flex;
+    align-items: center;
+  }
+
+  .cvs-option:last-child  { border-bottom: none; }
+  .cvs-option:hover       { transform: translateX(2px); filter: brightness(1.1); }
+  .cvs-option:active      { background: rgba(58, 48, 15, 0.6); }
+
+  .cvs-option-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    font-family: var(--font-mono);
+  }
+
+  /* Empty / loading message */
+  .cvs-no-results {
+    padding: 16px;
+    color: #7a6a44;
+    font-style: italic;
+    text-align: center;
+    font-size: 0.85rem;
+  }
+
+  /* Selected chords area */
+  .cvs-selected {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 36px;
+    align-items: center;
+    padding: 8px;
+    background: rgba(26, 21, 8, 0.5);
+    border: 1px solid rgba(58, 48, 15, 0.3);
+    border-radius: 8px;
+  }
+
+  .cvs-selected:empty::before {
+    content: "No chords selected yet";
+    color: #7a6a44;
+    font-style: italic;
+    font-size: 0.85rem;
+  }
+
+  /* Individual selected chord tag */
+  .cvs-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  }
+
+  .cvs-tag:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+    filter: brightness(1.1);
+  }
+
+  .cvs-tag-text {
+    font-weight: 600;
+    font-family: var(--font-mono);
+  }
+
+  /* Remove button inside tag */
+  .cvs-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 3px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+    opacity: 0.7;
+  }
+
+  .cvs-remove:hover {
+    opacity: 1;
+    background: rgba(232, 160, 48, 0.1);
+    transform: scale(1.1);
+  }
+
+  .cvs-remove:active {
+    transform: scale(0.95);
+  }
+</style>

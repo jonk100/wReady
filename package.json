@@ -7,6 +7,8 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "dev:sync": "chokidar \"src/content/**/*\" -i \"**/.DS_Store\" -i \"**/.git/**\" -c \"pnpm astro sync\"",
+    "dev:with-sync": "concurrently -n sync,dev -c cyan,green \"pnpm dev:sync\" \"pnpm dev\"",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
@@ -35,5 +37,9 @@
     "typescript": "^6.0.2",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0"
+  },
+  "devDependencies": {
+    "chokidar-cli": "^3.0.0",
+    "concurrently": "^9.2.1"
   }
 }

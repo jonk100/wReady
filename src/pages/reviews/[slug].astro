@@ -98,10 +98,10 @@ const topActors = data.cast?.slice(0, 3) ?? [];
       </div>
     </header>
 
-    {data.poster && (
+    {(data.poster || data.heroImage) && (
       <div class="review-poster">
         <img
-          src={data.poster}
+          src={(data.poster || data.heroImage) as string}
           alt={`${data.title} poster`}
           loading="lazy"
         />

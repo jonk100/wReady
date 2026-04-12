@@ -2,7 +2,6 @@
 import { getCollection, render } from "astro:content";
 import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import ChordDiagram from "../../components/songs/ChordDiagram.astro";
 import ChordVoicingsSection from "../../components/songs/ChordVoicingsSection.astro";
 import SongStructureSection from "../../components/songs/SongStructureSection.astro";
 import SongSectionDetails from "../../components/songs/SongSectionDetails.astro";
@@ -227,12 +226,12 @@ function calculateTotalBars(sections: any[], structure: string[]) {
 
   .content-body :is(h1, h2, h3, h4, h5, h6) {
     color: var(--text-primary);
-    margin-top: var(--space-6);
-    margin-bottom: var(--space-3);
+    /* margin-top: var(--space-6);
+    margin-bottom: var(--space-3); */
   }
 
   .content-body p {
-    margin-bottom: var(--space-1);
+    margin-bottom: 0;
   }
 
   /* Song-specific CSS variables */

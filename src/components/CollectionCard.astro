@@ -21,8 +21,8 @@ interface Props {
 const { entry, variant = "auto" } = Astro.props;
 
 // Extract data based on collection type
-const data = entry.data;
-const href = `/${entry.collection}/${entry.id}`;
+const data = (entry as any).data;
+const href = `/${(entry as any).collection}/${(entry as any).id}`;
 
 // Determine if we should use image variant
 const useImageVariant = variant === "image" || (variant === "auto" && data.poster);

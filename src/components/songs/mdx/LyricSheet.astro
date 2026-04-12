@@ -1,0 +1,115 @@
+---
+/**
+ * LyricsSheet.astro
+ *
+ * Top-level wrapper for a song's lyric sheet. Renders the song title,
+ * key/tempo/time-signature metadata, and provides section definitions
+ * to any nested <LyricsSection> components via a context slot.
+ *
+ * Usage in an MDX file:
+ *
+ * ```mdx
+ * import LyricsSheet from '@/components/lyrics/LyricsSheet.astro';
+ * import LyricsSection from '@/components/lyrics/LyricsSection.astro';
+ * import C from '@/components/lyrics/C.astro';
+ *
+ * <LyricsSheet
+ *   title={frontmatter.title}
+ *   keyRoot={frontmatter.keyRoot}
+ *   keyMode={frontmatter.keyMode}
+ *   tempo={frontmatter.tempo}
+ *   timeSignatureTop={frontmatter.timeSignatureTop}
+ *   timeSignatureBottom={frontmatter.timeSignatureBottom}
+ *   sections={frontmatter.sections}
+ * >
+ *   <LyricsSection name="verse" sections={frontmatter.sections}>
+ *     <C chord="Am">If</C> i had a gun...
+ *   </LyricsSection>
+ * </LyricsSheet>
+ * ```
+ *
+ * @prop {string}   title               - Song title
+ * @prop {string}   keyRoot             - Root note of the key (e.g. "A", "F#")
+ * @prop {string}   keyMode             - "major" or "minor"
+ * @prop {number}   [tempo]             - BPM, optional
+ * @prop {number}   [timeSignatureTop]  - Beats per bar (numerator), optional
+ * @prop {number}   [timeSignatureBottom] - Beat unit (denominator), optional
+ * @prop {Array}    [sections]          - Full sections array from frontmatter, passed
+ *                                        through for child LyricsSection components to use
+ */
+
+interface SectionDef {
+  name: string;
+  chords?: string[];
+  bars?: number;
+  repeats?: number;
+}
+
+interface Props {
+  title: string;
+  keyRoot: string;
+  keyMode?: string;
+  tempo?: number;
+  timeSignatureTop?: number;
+  timeSignatureBottom?: number;
+  sections?: SectionDef[];
+}
+
+const {
+  title,
+  keyRoot,
+  keyMode,
+  tempo,
+  timeSignatureTop,
+  timeSignatureBottom,
+} = Astro.props;
+
+/** Formats the key label, e.g. "A minor", "F# major" */
+const keyLabel = [keyRoot, keyMode].filter(Boolean).join(' ');
+
+/** Formats the time signature, e.g. "4/4" */
+const timeSig =
+  timeSignatureTop && timeSignatureBottom
+    ? `${timeSignatureTop}/${timeSignatureBottom}`
+    : null;
+---
+
+<div class="ls-root">
+  <div class="ls-song-meta">
+    <h1 class="ls-song-title">{title}</h1>
+    <div class="ls-meta-row">
+      {keyLabel && <span>Key: {keyLabel}</span>}
+      {tempo && <span>♩= {tempo}</span>}
+      {timeSig && <span>{timeSig}</span>}
+    </div>
+  </div>
+
+  <slot />
+</div>
+
+<style>
+  .ls-root {
+    font-family: var(--font-mono);
+    padding: 1rem 0;
+  }
+
+  .ls-song-meta {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+
+  .ls-song-title {
+    font-size: 1.4rem;
+    font-weight: 500;
+    margin: 0 0 0.35rem;
+    color: var(--color-text-primary);
+  }
+
+  .ls-meta-row {
+    display: flex;
+    gap: 1.25rem;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+</style>

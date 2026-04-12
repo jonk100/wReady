@@ -23,6 +23,7 @@ interface Props {
   meta?: string[];
   footer?: string;
   class?: string;
+  dataSet?: string;
 }
 
 const {
@@ -36,6 +37,7 @@ const {
   meta = [],
   footer,
   class: className = "",
+  dataSet,
 } = Astro.props;
 
 const CardWrapper = href ? "a" : "div";
@@ -46,6 +48,7 @@ const cardClass = `base-card ${className}`.trim();
   class={cardClass} 
   href={href}
   {...(href && { "aria-label": title })}
+  {...(dataSet && { "data-set": dataSet })}
 >
   {image && (
     <div class="base-card__image-wrap">

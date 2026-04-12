@@ -42,3 +42,44 @@ export async function writeContentFile(params: {
 
   return { path: filePath, slug };
 }
+
+/**
+ * Deletes a content file from disk by collection and slug.
+ * Tries .mdx first, then falls back to .md.
+ *
+ * @param collection - The content collection name e.g. 'chords', 'songs'
+ * @param slug - The entry slug (filename without extension)
+ * @returns {{ slug: string, success: boolean }}
+ * @throws {Error} if no matching file is found for the slug
+ */
+export async function deleteContentFile({
+  collection,
+  slug,
+}: {
+  collection: string;
+  slug: string;
+}): Promise<{ slug: string; success: boolean }> {
+  const base = path.join(process.cwd(), 'src/content', collection);
+ 
+  // Try .mdx first, then .md
+  const candidates = [
+    path.join(base, `${slug}.mdx`),
+    path.join(base, `${slug}.md`),
+  ];
+ 
+  for (const filePath of candidates) {
+    try {
+      await fs.access(filePath);
+      await fs.unlink(filePath);
+      console.log(`Deleted: ${filePath}`);
+      return { slug, success: true };
+    } catch {
+      // File doesn't exist at this path — try next candidate
+    }
+  }
+ 
+  throw new Error(
+    `No file found for slug "${slug}" in collection "${collection}". ` +
+    `Looked for: ${candidates.join(', ')}`
+  );
+}

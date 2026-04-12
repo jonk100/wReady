@@ -1,0 +1,260 @@
+---
+/**
+ * ActorCreateForm.astro
+ * 
+ * Form for creating new actors with headshot image handling.
+ * Includes TMDB ID field for integration with review enrichment.
+ */
+---
+
+<section class="create">
+  <details>
+    <summary>Add a new actor</summary>
+    
+    <form id="actor-create-form">
+      <div class="form-grid">
+        <!-- Basic Info -->
+        <div class="form-field">
+          <label for="slug">Slug *</label>
+          <input type="text" id="slug" name="slug" required 
+                 placeholder="e.g., elliott-gould" />
+        </div>
+
+        <div class="form-field">
+          <label for="name">Name *</label>
+          <input type="text" id="name" name="name" required 
+                 placeholder="e.g., Elliott Gould" />
+        </div>
+
+        <div class="form-field">
+          <label for="tmdb-id">TMDB ID *</label>
+          <input type="number" id="tmdb-id" name="tmdbId" required 
+                 placeholder="e.g., 12345" />
+          <small>Required for TMDB integration and review enrichment</small>
+        </div>
+
+        <!-- Optional Fields -->
+        <div class="form-field">
+          <label for="born">Date of Birth</label>
+          <input type="date" id="born" name="born" />
+        </div>
+
+        <div class="form-field">
+          <label for="from">Place of Birth</label>
+          <input type="text" id="from" name="from" 
+                 placeholder="e.g., New York City, New York, USA" />
+        </div>
+
+        <div class="form-field">
+          <label for="hero-image-url">Headshot Image URL</label>
+          <input type="url" id="hero-image-url" name="heroImageUrl" 
+                 placeholder="https://..." />
+          <small>TMDB profile image URLs work best</small>
+        </div>
+
+        <!-- Image Preview -->
+        <div class="form-field full-width" id="image-preview-section" style="display: none;">
+          <label>Image Preview</label>
+          <div class="image-preview">
+            <img id="preview-img" src="" alt="Headshot preview" />
+            <p id="preview-status"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit">Create Actor</button>
+        <button type="reset">Reset</button>
+      </div>
+
+      <p id="actor-create-status" class="status" aria-live="polite"></p>
+    </form>
+  </details>
+</section>
+
+<style>
+  .create {
+    margin: var(--space-8) 0;
+    padding: var(--space-6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-4);
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .form-field.full-width {
+    grid-column: 1 / -1;
+  }
+
+  label {
+    font-weight: 500;
+    font-size: var(--text-sm);
+  }
+
+  input, select, textarea {
+    padding: var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+  }
+
+  small {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin-top: var(--space-1);
+  }
+
+  .image-preview {
+    margin-top: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-4);
+    text-align: center;
+    background: var(--background-muted);
+  }
+
+  .image-preview img {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: var(--radius);
+    object-fit: cover;
+    margin-bottom: var(--space-2);
+  }
+
+  .image-preview p {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+  }
+
+  .status {
+    grid-column: 1 / -1;
+    margin-top: var(--space-4);
+    padding: var(--space-2);
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+  }
+
+  .status[style*="#f87171"] {
+    background-color: #fef2f2;
+    color: #dc2626;
+  }
+
+  .status[style*="#4ade80"] {
+    background-color: #f0fdf4;
+    color: #16a34a;
+  }
+</style>
+
+<script>
+  const form = document.getElementById('actor-create-form') as HTMLFormElement;
+  const statusEl = document.getElementById('actor-create-status') as HTMLParagraphElement;
+  const heroImageUrlInput = document.getElementById('hero-image-url') as HTMLInputElement;
+  const imagePreviewSection = document.getElementById('image-preview-section') as HTMLDivElement;
+  const previewImg = document.getElementById('preview-img') as HTMLImageElement;
+  const previewStatus = document.getElementById('preview-status') as HTMLParagraphElement;
+  const slugInput = document.getElementById('slug') as HTMLInputElement;
+  const nameInput = document.getElementById('name') as HTMLInputElement;
+
+  // Auto-generate slug from name
+  nameInput.addEventListener('input', () => {
+    const name = nameInput.value.trim();
+    if (name && !slugInput.value) {
+      const slug = name.toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim('-');
+      slugInput.value = slug;
+    }
+  });
+
+  // Image preview functionality
+  heroImageUrlInput.addEventListener('input', () => {
+    const url = heroImageUrlInput.value.trim();
+    
+    if (url) {
+      previewImg.src = url;
+      previewStatus.textContent = 'Loading preview...';
+      imagePreviewSection.style.display = 'block';
+
+      previewImg.onload = () => {
+        previewStatus.textContent = 'Image loaded successfully';
+      };
+
+      previewImg.onerror = () => {
+        previewStatus.textContent = 'Failed to load image preview';
+        previewStatus.style.color = '#f87171';
+      };
+    } else {
+      imagePreviewSection.style.display = 'none';
+      previewImg.src = '';
+    }
+  });
+
+  // Form submission
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    statusEl.textContent = 'Saving...';
+
+    try {
+      const fd = new FormData(form);
+      const rawData = Object.fromEntries(fd.entries());
+
+      // Transform fields and handle optional values
+      const payload: any = {
+        slug: rawData.slug as string,
+        name: rawData.name as string,
+        tmdbId: parseInt(rawData.tmdbId as string, 10),
+        born: rawData.born ? rawData.born as string : undefined,
+        from: rawData.from ? rawData.from as string : undefined,
+        heroImageUrl: rawData.heroImageUrl ? rawData.heroImageUrl as string : undefined,
+      };
+
+      const { actions } = await import('astro:actions');
+      const { data, error } = await actions.createActor(payload);
+
+      if (error) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = `Error: ${error.message}`;
+      } else if (data.success) {
+        statusEl.style.color = '#4ade80';
+        statusEl.textContent = `Saved ${data.id}`;
+
+        // Reload triggers fresh fs.readdir() in the index page
+        setTimeout(() => window.location.reload(), 800);
+      }
+    } catch (err) {
+      statusEl.style.color = '#f87171';
+      statusEl.textContent = 'Unexpected error. Check the console.';
+      console.error(err);
+    }
+  });
+
+  // Reset form functionality
+  form.addEventListener('reset', () => {
+    imagePreviewSection.style.display = 'none';
+    previewImg.src = '';
+    previewStatus.textContent = '';
+    previewStatus.style.color = '';
+    statusEl.textContent = '';
+    statusEl.style.color = '';
+  });
+</script>

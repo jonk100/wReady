@@ -6,29 +6,62 @@
  * Uses SongCard components for consistent styling with other collection pages.
  */
 
-import { getCollection, type CollectionEntry } from "astro:content";
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import matter from 'gray-matter';
+import type { CollectionEntry } from "astro:content";
 import IndexLayout from "../../layouts/IndexLayout.astro";
 import SongCard from "../../components/collection-cards/SongCard.astro";
-import SongCreateForm from "../../components/songs/SongCreateForm.astro";
+import SongCreateForm from "../../components/songs/new-song/SongCreateForm.astro";
 
-const songs = await getCollection("songs");
+export const prerender = false;
 
-// Sort alphabetically by title
-const sorted = songs.sort((a, b) => a.data.title.localeCompare(b.data.title));
+type SongEntry = CollectionEntry<"songs">;
+
+/**
+ * Reads all song .mdx files directly from disk at request time,
+ * bypassing Astro's content store (which is populated at build time
+ * and does not update between SSR requests).
+ *
+ * Returns an array shaped like CollectionEntry<"songs"> so SongCard
+ * components remain unchanged.
+ *
+ * @returns {Promise<Array<{ id: string, data: Record<string, any> }>>}
+ */
+const songsDir = path.resolve(process.cwd(), 'src/content/songs');
+
+const files = await fs.readdir(songsDir);
+
+const songs = (
+  await Promise.all(
+    files
+      .filter(f => f.endsWith('.md') || f.endsWith('.mdx'))
+      .map(async (file) => {
+        const raw = await fs.readFile(path.join(songsDir, file), 'utf-8');
+        const { data } = matter(raw);
+        const id = file.replace(/\.(md|mdx)$/, '');
+        return { 
+          id, 
+          data: data as SongEntry['data'], 
+          collection: "songs" as const 
+        };
+      })
+  )
+).sort((a, b) => a.data.title.localeCompare(b.data.title));
 ---
 
 <IndexLayout
   title="Songs"
-  count={sorted.length}
+  count={songs.length}
   description="All songs — standalone and album tracks."
 >
   <SongCreateForm />
   
-  {sorted.length === 0 ? (
+  {songs.length === 0 ? (
     <p class="empty">No songs yet.</p>
   ) : (
     <ul class="grid grid--cols-3">
-      {sorted.map((entry) => (
+      {songs.map((entry) => (
         <li>
           <SongCard entry={entry} />
         </li>

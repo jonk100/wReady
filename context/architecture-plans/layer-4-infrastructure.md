@@ -23,8 +23,6 @@ In your current "Writty" project, Infra is responsible for:
 * Creating new folders (like project-specific character folders).
 * Saving images (posters/headshots) to the `/public/` directory.
 
-
-
 ### Why we separate it
 We keep "Infra" separate so that it doesn't "pollute" your creative logic. 
 

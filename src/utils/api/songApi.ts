@@ -1,5 +1,8 @@
 /**
  * songApi.ts
+ * 
+ * Handles song generation API calls
+ * 
  */
 
 export async function createSong(data: FormData) {

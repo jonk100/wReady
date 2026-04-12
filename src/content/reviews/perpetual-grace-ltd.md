@@ -42,25 +42,6 @@ overview: >-
   opportunity to reverse his life’s worsening course as he attempts to prey upon
   Pastor Byron Brown, who turns out to be far more
 poster: /images/tmdb/perpetual-grace-ltd-82695.jpg
-castDetailed:
-  - id: 2282
-    name: Ben Kingsley
-    character: Pastor Byron 'Pa' Brown
-  - id: 22125
-    name: Jimmi Simpson
-    character: James Schaeler
-  - id: 40481
-    name: Luis Guzmán
-    character: Hector Contreras
-  - id: 62752
-    name: Damon Herriman
-    character: Paul Allen Brown
-  - id: 227199
-    name: Chris Conrad
-    character: New Leaf
-  - id: 67837
-    name: Jacki Weaver
-    character: Lillian 'Ma' Brown
 ---
 
 # Another Masterpiece by Steven Conrad

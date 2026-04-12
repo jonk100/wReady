@@ -1,0 +1,93 @@
+---
+/**
+ * C.astro  (short for "Chord")
+ *
+ * Inline component that renders a chord symbol floating above a word or
+ * phrase, Ultimate Guitar style. Wraps its children in a relative-positioned
+ * span and places the chord label in an absolutely-positioned element
+ * sitting 1.2em above the baseline.
+ *
+ * The parent container (.ls-lyrics) must have line-height ≥ 2.4 so that the
+ * chord label has vertical clearance. LyricsSection.astro sets this already.
+ *
+ * Usage (in MDX, inside a LyricsSection):
+ *
+ * ```mdx
+ * <C chord="Am">If</C> i had a gun,
+ * I'd point it at the <C chord="E">sun</C>,
+ * ```
+ *
+ * The `chord` prop accepts any string — standard chord names,
+ * slash chords, Nashville numbers, Roman numerals, etc.
+ *
+ * @prop {string} chord - The chord symbol to display above the word
+ */
+
+interface Props {
+  chord: string;
+}
+
+const { chord } = Astro.props;
+---
+
+<span class="c-root">
+  <span class="c-label" aria-hidden="true">{chord}</span><slot /></span>
+
+<!--
+  Note: aria-hidden on the chord label prevents screen readers from
+  announcing chord names mid-sentence. If you want chords to be
+  screen-reader accessible, remove aria-hidden and wrap the whole
+  component in an <abbr title="chord: {chord}"> instead.
+-->
+
+<style>
+  .c-root {
+    /*
+     * inline-block so the absolute child (the chord label) is contained
+     * within this element's stacking context.
+     */
+    display: inline-block;
+    position: relative;
+
+    /*
+     * A small right margin prevents chord labels on adjacent annotated
+     * words from visually merging when the words sit close together.
+     */
+    margin-right: 1px;
+  }
+
+  .c-label {
+    position: absolute;
+
+    /*
+     * Sits 1.2em above the text baseline. This aligns cleanly when
+     * line-height is 2.4+. Adjust if you change line-height in LyricsSection.
+     */
+    top: -1.25em;
+    left: 0;
+
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+
+    /*
+     * Amber accent — matches the editorial palette used across the app.
+     * Change this to var(--color-text-info) for a neutral blue if preferred.
+     */
+    color: #e8c547;
+
+    /*
+     * nowrap prevents a long chord name (e.g. "Cmaj7/E") from wrapping
+     * onto a second line and disrupting the layout.
+     */
+    white-space: nowrap;
+
+    /*
+     * pointer-events: none so hovering the chord label doesn't interfere
+     * with text selection of the lyric line.
+     */
+    pointer-events: none;
+
+    line-height: 1;
+  }
+</style>

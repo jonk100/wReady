@@ -624,32 +624,47 @@ const initialThemes = JSON.stringify(initial?.themes ?? []);
     const data = new FormData(form);
 
     try {
-      const res = await fetch("/api/songs/create", {
-        method: "POST",
-        body: data,
-      });
-
-      const json = (await res.json()) as {
-        ok: boolean;
-        error?: string;
-        wroteFile?: boolean;
-        slug?: string;
-        mdx?: string;
-        filePath?: string;
+      // Import actions dynamically for Astro compatibility
+      const { actions } = await import('astro:actions');
+      
+      // Convert FormData to object for action
+      const rawData = Object.fromEntries(data.entries());
+      
+      // Send JSON data directly to the action
+      const payload = {
+        slug: rawData.slug as string,
+        title: rawData.title as string,
+        keyRoot: rawData.keyRoot as string,
+        keyMode: rawData.keyMode as "major" | "minor",
+        tempo: rawData.tempo ? parseInt(rawData.tempo as string, 10) : undefined,
+        timeSignatureTop: parseInt(rawData.timeSignatureTop as string, 10),
+        timeSignatureBottom: parseInt(rawData.timeSignatureBottom as string, 10),
+        chordVoicings: JSON.parse(rawData.chordVoicings as string || "[]"),
+        structure: JSON.parse(rawData.structure as string || "[]"),
+        sections: JSON.parse(rawData.sections as string || "[]"),
+        album: typeof rawData.album === 'string' ? rawData.album : undefined,
+        chordSheetUrl: typeof rawData.chordSheetUrl === 'string' ? rawData.chordSheetUrl : undefined,
+        status: rawData.status as string || "idea",
+        themes: JSON.parse(rawData.themes as string || "[]"),
+        body: rawData.body as string || "",
       };
 
-      if (!res.ok || !json.ok) {
-        setStatus(json.error ?? "Request failed");
+      const { data: actionResult, error } = await actions.createSong(payload);
+
+      if (error) {
+        setStatus(error.message ?? "Action failed");
         return;
       }
 
-      if (json.mdx) outputEl.value = json.mdx;
-
-      setStatus(
-        json.wroteFile
-          ? `Wrote ${json.slug}.mdx. Restart dev server to see it in the collection.`
-          : "Generated MDX (not written to disk). Set ALLOW_CHORD_WRITE=true to enable saving."
-      );
+      if (actionResult.success) {
+        setStatus(actionResult.message || "Song created successfully");
+        
+        // This is the magic part: reload after successful action
+        // to trigger fresh content rendering
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err));
     }
@@ -1022,5 +1037,35 @@ const initialThemes = JSON.stringify(initial?.themes ?? []);
     color: #7a6a44;
     font-style: italic;
     font-size: 0.85rem;
+  }
+
+  /* Form styling overrides */
+  .create select {
+    font-family: var(--font-body) !important;
+    font-size: var(--text-base) !important;
+    color: var(--text-primary) !important;
+    background: var(--bg-raised) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.5rem 0.75rem !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    appearance: none !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M6 9l6 6M6 6l6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 1rem !important;
+    padding-right: 2.5rem !important;
+  }
+
+  .create-form select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(232, 197, 71, 0.1);
+  }
+
+  .create-form select option {
+    background: var(--bg-raised);
+    color: var(--text-primary);
+    padding: 0.5rem;
   }
 </style>

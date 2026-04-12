@@ -3,7 +3,8 @@
  * ChordCard.astro
  *
  * Renders a single chord card using BaseCard as foundation.
- * Works specifically with chord collection entries.
+ * Includes a delete button that floats above the card (outside BaseCard
+ * to avoid overflow:hidden clipping and the card's <a> tag stealing clicks).
  */
 
 import type { CollectionEntry } from "astro:content";
@@ -16,7 +17,7 @@ interface Props {
 const { entry } = Astro.props;
 const { data } = entry;
 
-// Helper to format fret display
+/** Formats fret numbers into a readable string e.g. "x-0-2-2-1-0" */
 function formatFrets(frets: (number | string)[]) {
   return frets.map(fret => {
     if (fret === -1 || fret === 'x') return 'x';
@@ -25,16 +26,16 @@ function formatFrets(frets: (number | string)[]) {
   }).join('-');
 }
 
-// Helper to normalize title
+/** Normalises the display title from chord name and voicing label */
 function getNormalizedTitle(displayName: string, voicingLabel: string) {
-  const shape = voicingLabel === 'open' ? 'Open' : 
-               voicingLabel.includes('e-shape') ? 'E-Shape' :
-               voicingLabel.includes('a-shape') ? 'A-Shape' :
-               voicingLabel;
+  const shape = voicingLabel === 'open' ? 'Open'
+    : voicingLabel.includes('e-shape') ? 'E-Shape'
+    : voicingLabel.includes('a-shape') ? 'A-Shape'
+    : voicingLabel;
   return `${displayName} (${shape})`;
 }
 
-// Helper to get chord type from display name
+/** Derives chord type from display name for badge colouring */
 function getChordType(displayName: string) {
   if (displayName.includes('m')) return 'minor';
   if (displayName.includes('7')) return 'seventh';
@@ -42,41 +43,135 @@ function getChordType(displayName: string) {
   return 'major';
 }
 
-// Helper to get chord color
+/** Returns the CSS colour variable for a given chord type */
 function getChordColor(type: string) {
   switch (type) {
-    case 'minor':
-      return 'var(--chord-minor)';
-    case 'seventh':
-      return 'var(--chord-seventh)';
-    case 'major':
-      return 'var(--chord-major)';
-    default:
-      return 'var(--accent)';
+    case 'minor':   return 'var(--chord-minor)';
+    case 'seventh': return 'var(--chord-seventh)';
+    case 'major':   return 'var(--chord-major)';
+    default:        return 'var(--accent)';
   }
 }
 
-// Build meta array for BaseCard (just the fret pattern)
-const meta: string[] = [formatFrets(data.frets)];
-
-// Determine chord type and color
-const chordType = getChordType(data.displayName);
-const chordColor = getChordColor(chordType);
+const meta: string[]  = [formatFrets(data.frets)];
+const chordType       = getChordType(data.displayName);
+const chordColor      = getChordColor(chordType);
 const normalizedTitle = getNormalizedTitle(data.displayName, data.voicingLabel);
 ---
 
-<BaseCard
-  href={`/chords/${entry.id}`}
-  title={normalizedTitle}
-  badge={chordType}
-  badgeColor={chordColor}
-  meta={meta}
-  class="chord-card"
-/>
+<div class="chord-card-wrap">
+  <BaseCard
+    href={`/chords/${entry.id}`}
+    title={normalizedTitle}
+    badge={chordType}
+    badgeColor={chordColor}
+    meta={meta}
+    class="chord-card"
+  />
+
+  <button
+    class="card-delete-btn"
+    data-slug={entry.id}
+    data-collection="chords"
+    aria-label={`Delete chord ${normalizedTitle}`}
+    title={`Delete ${normalizedTitle}`}
+  >
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+      stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <polyline points="3 6 5 6 21 6"></polyline>
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+      <path d="M10 11v6"></path>
+      <path d="M14 11v6"></path>
+      <path d="M9 6V4h6v2"></path>
+    </svg>
+  </button>
+</div>
+
+<script>
+  /**
+   * Wires delete buttons on all chord cards on the page.
+   * Script is hoisted — runs once — querySelectorAll handles all instances.
+   */
+  document.querySelectorAll<HTMLButtonElement>(
+    '.card-delete-btn[data-collection="chords"]'
+  ).forEach((btn) => {
+    btn.addEventListener('click', async (e: MouseEvent): Promise<void> => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const slug = btn.dataset.slug ?? '';
+      if (!slug) return;
+
+      if (!window.confirm(`Delete chord "${slug}"? This cannot be undone.`)) return;
+
+      btn.disabled = true;
+
+      try {
+        const { actions } = await import('astro:actions');
+        const { data, error } = await actions.deleteChord({ slug });
+
+        if (error || !data?.success) {
+          window.alert(`Error: ${error?.message ?? data?.message ?? 'Delete failed'}`);
+          btn.disabled = false;
+          return;
+        }
+
+        btn.closest<HTMLElement>('.chord-card-wrap')?.remove();
+        setTimeout(() => window.location.reload(), 400);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Unexpected error');
+        btn.disabled = false;
+      }
+    });
+  });
+</script>
 
 <style>
+  .chord-card-wrap {
+    position: relative;
+    overflow: visible;
+  }
+
+  .card-delete-btn {
+    position: absolute;
+    bottom: var(--space-2);
+    right: var(--space-2);
+    z-index: 2;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+
+    background: var(--bg-card);
+    border: 1px solid transparent;
+    border-radius: 50%;
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s, border-color 0.15s, background 0.15s;
+  }
+
+  .chord-card-wrap:hover .card-delete-btn {
+    opacity: 1;
+  }
+
+  .card-delete-btn:hover {
+    color: #f87171;
+    border-color: #f87171;
+    background: color-mix(in srgb, #f87171 12%, var(--bg-card));
+  }
+
+  .card-delete-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
   .chord-card {
-    /* Chord-specific styling */
     --chord-major: #3b82f6;
     --chord-minor: #ef4444;
     --chord-seventh: #8b5cf6;

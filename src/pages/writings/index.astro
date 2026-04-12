@@ -4,18 +4,86 @@
  *
  * Index page for all writings. Shows poems and short stories together.
  * Uses PoemCard and ShortStoryCard components for consistent styling.
+ * Reads directly from disk to support live-write functionality.
  */
 
-import { getCollection, type CollectionEntry } from "astro:content";
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import matter from 'gray-matter';
 import IndexLayout from "../../layouts/IndexLayout.astro";
 import PoemCard from "../../components/collection-cards/PoemCard.astro";
 import ShortStoryCard from "../../components/collection-cards/ShortStoryCard.astro";
+import DreamCard from "../../components/collection-cards/DreamCard.astro";
+import CreateWritingForm from "../../components/writings/CreateWritingForm.astro";
+import WritingsFilter from "../../components/filters/WritingsFilter.astro";
 
-const poems = await getCollection("poems");
-const shortStories = await getCollection("short-stories");
+type WritingEntry = {
+  id: string;
+  data: Record<string, any>;
+  collection: 'poems' | 'short-stories' | 'dreams';
+};
 
-// Combine all writings and sort by date (newest first)
-const allWritings = [...poems, ...shortStories].sort((a, b) => {
+export const prerender = false;
+
+/**
+ * Reads all poems, short stories, and dreams directly from disk at request time.
+ * Bypasses Astro's content store, which is stale between SSR requests.
+ * Shaped like CollectionEntry so downstream components work unchanged.
+ */
+async function readWritingsFromDisk() {
+  const poemsDir = path.resolve(process.cwd(), 'src/content/poems');
+  const shortStoriesDir = path.resolve(process.cwd(), 'src/content/short-stories');
+  const dreamsDir = path.resolve(process.cwd(), 'src/content/dreams');
+  
+  const [poemFiles, shortStoryFiles, dreamFiles] = await Promise.all([
+    fs.readdir(poemsDir).catch(() => []),
+    fs.readdir(shortStoriesDir).catch(() => []),
+    fs.readdir(dreamsDir).catch(() => [])
+  ]);
+
+  const poems = await Promise.all(
+    poemFiles
+      .filter(f => f.endsWith('.md') || f.endsWith('.mdx'))
+      .map(async (file) => {
+        const raw = await fs.readFile(path.join(poemsDir, file), 'utf-8');
+        const { data } = matter(raw);
+        const id = file.replace(/\.(md|mdx)$/, '');
+        return { id, data, collection: 'poems' as const };
+      })
+  );
+
+  const shortStories = await Promise.all(
+    shortStoryFiles
+      .filter(f => f.endsWith('.md') || f.endsWith('.mdx'))
+      .map(async (file) => {
+        const raw = await fs.readFile(path.join(shortStoriesDir, file), 'utf-8');
+        const { data } = matter(raw);
+        const id = file.replace(/\.(md|mdx)$/, '');
+        return { id, data, collection: 'short-stories' as const };
+      })
+  );
+
+  const dreams = await Promise.all(
+    dreamFiles
+      .filter(f => f.endsWith('.md') || f.endsWith('.mdx'))
+      .map(async (file) => {
+        const raw = await fs.readFile(path.join(dreamsDir, file), 'utf-8');
+        const { data } = matter(raw);
+        const id = file.replace(/\.(md|mdx)$/, '');
+        return { id, data, collection: 'dreams' as const };
+      })
+  );
+
+  return [...poems, ...shortStories, ...dreams];
+}
+
+const allWritings = await readWritingsFromDisk();
+
+// Debug: Check if set data is being read
+console.log('All writings with set data:', allWritings.filter(w => w.data.set));
+
+// Sort by date (newest first)
+const sortedWritings = allWritings.sort((a, b) => {
   const dateA = new Date(a.data.writtenAt || 0);
   const dateB = new Date(b.data.writtenAt || 0);
   return dateB.getTime() - dateA.getTime();
@@ -24,19 +92,24 @@ const allWritings = [...poems, ...shortStories].sort((a, b) => {
 
 <IndexLayout
   title="Writings"
-  count={allWritings.length}
+  count={sortedWritings.length}
   description="All poems and short stories."
 >
-  {allWritings.length === 0 ? (
+  <WritingsFilter writings={sortedWritings} />
+  <CreateWritingForm />
+
+  {sortedWritings.length === 0 ? (
     <p class="empty">No writings yet.</p>
   ) : (
     <ul class="grid grid--cols-3">
-      {allWritings.map((entry) => (
+      {sortedWritings.map((entry) => (
         <li>
           {entry.collection === "poems" ? (
-            <PoemCard entry={entry as CollectionEntry<"poems">} />
+            <PoemCard entry={entry as any} />
+          ) : entry.collection === "dreams" ? (
+            <DreamCard entry={entry as any} />
           ) : (
-            <ShortStoryCard entry={entry as CollectionEntry<"short-stories">} />
+            <ShortStoryCard entry={entry as any} />
           )}
         </li>
       ))}
@@ -76,5 +149,6 @@ const allWritings = [...poems, ...shortStories].sort((a, b) => {
   :root {
     --accent-purple: #8b5cf6;
     --accent-green: #10b981;
+    --accent-blue: #154695;
   }
 </style>

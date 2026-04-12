@@ -1,0 +1,863 @@
+---
+/**
+ * SectionManager.astro
+ *
+ * A self-contained UI for defining song sections and building a playback
+ * structure sequence from them.
+ *
+ * Responsibilities:
+ *  - Create / remove named sections (verse, chorus, bridge, etc.)
+ *  - Edit chords, bars, and repeats for each section
+ *  - Drag to reorder the sections list
+ *  - Click a section badge to append it to the structure sequence
+ *  - Remove individual entries from the structure sequence
+ *  - Drag to reorder the structure sequence
+ *  - Dispatches `section-manager-change` (bubbles: true) on every change
+ *    so the parent form can sync its hidden inputs
+ *
+ * Event emitted:
+ *  section-manager-change — detail: { sections: Section[], structure: string[] }
+ *
+ * Usage in SongCreateForm:
+ *  <SectionManager initialSections={[...]} initialStructure={[...]} />
+ *  <input name="sections"  type="hidden" id="sections-hidden"  value="[]" />
+ *  <input name="structure" type="hidden" id="structure-hidden" value="[]" />
+ *
+ *  // In parent <script>:
+ *  document.addEventListener('section-manager-change', (e) => {
+ *    const { sections, structure } = e.detail;
+ *    sectionsHidden.value  = JSON.stringify(sections);
+ *    structureHidden.value = JSON.stringify(structure);
+ *  });
+ *
+ * Props:
+ *  @prop {Section[]} initialSections  - Pre-populated sections (edit mode)
+ *  @prop {string[]}  initialStructure - Pre-populated structure sequence
+ */
+
+export interface Section {
+  name: string;
+  chords: string[];
+  bars: number;
+  repeats: number;
+}
+
+export interface Props {
+  initialSections?:  Section[];
+  initialStructure?: string[];
+}
+
+const {
+  initialSections  = [],
+  initialStructure = [],
+} = Astro.props;
+---
+
+<div
+  class="section-manager"
+  data-initial-sections={JSON.stringify(initialSections)}
+  data-initial-structure={JSON.stringify(initialStructure)}
+>
+
+  <!-- ── Defined Sections ───────────────────────────────────────────────── -->
+  <div class="sm-block">
+    <div class="sm-block-header">
+      <h4 class="sm-block-title">Sections</h4>
+      <span class="sm-hint">Drag to reorder</span>
+    </div>
+
+    <!-- Sections list — populated by JS -->
+    <ul class="sm-sections-list" id="sm-sections-list" aria-label="Song sections"></ul>
+
+    <!-- Add section row -->
+    <div class="sm-add-row">
+      <input
+        id="sm-new-name"
+        class="sm-input sm-new-name"
+        type="text"
+        placeholder="Section name (e.g. verse)"
+        maxlength="32"
+        autocomplete="off"
+      />
+      <button type="button" class="sm-btn sm-btn--add" id="sm-add-btn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+             stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Add section
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Structure Sequence ─────────────────────────────────────────────── -->
+  <div class="sm-block">
+    <div class="sm-block-header">
+      <h4 class="sm-block-title">Playback Structure</h4>
+      <span class="sm-hint">Click a section above to add · drag to reorder</span>
+    </div>
+
+    <!-- Sequence chips — populated by JS -->
+    <div class="sm-sequence" id="sm-sequence" aria-label="Playback structure"></div>
+
+    <p class="sm-sequence-empty" id="sm-sequence-empty">
+      No sections in sequence yet — click a section badge above to add.
+    </p>
+  </div>
+
+</div>
+
+<script>
+  (() : void => {
+  // ---------------------------------------------------------------------------
+  // Types
+  // ---------------------------------------------------------------------------
+
+  /** A single song section with its chord list and timing data */
+  interface Section {
+    name:    string;
+    chords:  string[];
+    bars:    number;
+    repeats: number;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Root & sub-elements
+  // ---------------------------------------------------------------------------
+
+  const root = document.querySelector<HTMLElement>(".section-manager");
+  if (!root) {
+    console.error("SectionManager: root element not found");
+    return;
+  }
+
+  const sectionsList   = root.querySelector<HTMLUListElement>("#sm-sections-list")!;
+  const sequenceEl     = root.querySelector<HTMLDivElement>("#sm-sequence")!;
+  const sequenceEmpty  = root.querySelector<HTMLParagraphElement>("#sm-sequence-empty")!;
+  const newNameInput   = root.querySelector<HTMLInputElement>("#sm-new-name")!;
+  const addBtn         = root.querySelector<HTMLButtonElement>("#sm-add-btn")!;
+
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
+
+  /** Master list of defined sections */
+  let sections: Section[] = [];
+
+  /**
+   * Playback structure — an ordered list of section names.
+   * A name may appear more than once (e.g. verse → chorus → verse).
+   */
+  let structure: string[] = [];
+
+  // ---------------------------------------------------------------------------
+  // Initialise from data attributes
+  // ---------------------------------------------------------------------------
+
+  try {
+    const rawSections  = root.getAttribute("data-initial-sections");
+    const rawStructure = root.getAttribute("data-initial-structure");
+    if (rawSections)  sections  = JSON.parse(rawSections)  as Section[];
+    if (rawStructure) structure = JSON.parse(rawStructure) as string[];
+  } catch (err) {
+    console.error("SectionManager: failed to parse initial data", err);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Event dispatch
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Dispatches `section-manager-change` on the root element.
+   * The parent form listens and writes the values into its hidden inputs.
+   */
+  function dispatchChange(): void {
+    root?.dispatchEvent(
+      new CustomEvent<{ sections: Section[]; structure: string[] }>(
+        "section-manager-change",
+        {
+          bubbles: true,
+          detail:  { sections, structure },
+        }
+      )
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Drag-and-drop helpers
+  // ---------------------------------------------------------------------------
+
+  /** Index of the item currently being dragged */
+  let dragIndex: number | null = null;
+
+  /** Which list is being dragged — "sections" or "sequence" */
+  let dragList: "sections" | "sequence" | null = null;
+
+  /**
+   * Attaches drag-and-drop handlers to a single draggable element.
+   *
+   * @param el        - The element to make draggable
+   * @param list      - Which logical list this element belongs to
+   * @param getIndex  - Returns the element's current index in its list
+   * @param onDrop    - Called with (fromIndex, toIndex) when a drop occurs
+   */
+  function attachDrag(
+    el: HTMLElement,
+    list: "sections" | "sequence",
+    getIndex: () => number,
+    onDrop: (from: number, to: number) => void
+  ): void {
+    el.setAttribute("draggable", "true");
+
+    el.addEventListener("dragstart", () => {
+      dragIndex = getIndex();
+      dragList  = list;
+      el.classList.add("sm-dragging");
+    });
+
+    el.addEventListener("dragend", () => {
+      dragIndex = null;
+      dragList  = null;
+      el.classList.remove("sm-dragging");
+      el.closest("ul, .sm-sequence")
+        ?.querySelectorAll(".sm-drag-over")
+        .forEach((t) => t.classList.remove("sm-drag-over"));
+    });
+
+    el.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      if (dragList !== list) return;
+      el.classList.add("sm-drag-over");
+    });
+
+    el.addEventListener("dragleave", () => {
+      el.classList.remove("sm-drag-over");
+    });
+
+    el.addEventListener("drop", (e) => {
+      e.preventDefault();
+      el.classList.remove("sm-drag-over");
+      if (dragList !== list || dragIndex === null) return;
+      const toIndex = getIndex();
+      if (dragIndex !== toIndex) onDrop(dragIndex, toIndex);
+    });
+  }
+
+  /**
+   * Moves an element within an array from one index to another, mutating
+   * the array in place.
+   *
+   * @param arr   - The array to modify
+   * @param from  - Source index
+   * @param to    - Destination index
+   */
+  function moveItem<T>(arr: T[], from: number, to: number): void {
+    const [item] = arr.splice(from, 1);
+    arr.splice(to, 0, item);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render — sections list
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Re-renders the full sections list, including per-section chord, bar,
+   * and repeat editors. Re-attaches all event listeners after each render.
+   */
+  function renderSections(): void {
+    sectionsList.innerHTML = "";
+
+    if (sections.length === 0) {
+      sectionsList.innerHTML =
+        '<li class="sm-empty-hint">No sections yet — add one below.</li>';
+      return;
+    }
+
+    sections.forEach((section, index) => {
+      const li = document.createElement("li");
+      li.className = "sm-section-item";
+      li.dataset.index = String(index);
+
+      li.innerHTML = `
+        <div class="sm-section-header">
+          <span class="sm-drag-handle" aria-label="Drag to reorder" title="Drag to reorder">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                 stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6"  x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6"  x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+          </span>
+
+          <button type="button"
+                  class="sm-section-badge sm-add-to-sequence"
+                  data-name="${section.name}"
+                  title="Click to add to structure sequence">
+            ${section.name}
+          </button>
+
+          <div class="sm-section-meta">
+            <label class="sm-meta-label">
+              <span>Bars</span>
+              <input class="sm-input sm-mini" type="number"
+                     min="1" max="128"
+                     value="${section.bars}"
+                     data-field="bars" data-index="${index}" />
+            </label>
+            <label class="sm-meta-label">
+              <span>Repeats</span>
+              <input class="sm-input sm-mini" type="number"
+                     min="1" max="32"
+                     value="${section.repeats}"
+                     data-field="repeats" data-index="${index}" />
+            </label>
+          </div>
+
+          <button type="button" class="sm-btn sm-btn--remove sm-remove-section"
+                  data-index="${index}" aria-label="Remove ${section.name} section">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                 stroke="currentColor" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6"  y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Chord editor -->
+        <div class="sm-chord-row">
+          <label class="sm-chord-label">
+            <span>Chords</span>
+            <input class="sm-input sm-chord-input"
+                   type="text"
+                   value="${section.chords.join(", ")}"
+                   placeholder="C, G, Am, F"
+                   data-field="chords" data-index="${index}" />
+            <small>Comma-separated chord names</small>
+          </label>
+        </div>
+      `;
+
+      // Drag reorder for sections list
+      attachDrag(
+        li,
+        "sections",
+        () => parseInt(li.dataset.index!, 10),
+        (from, to) => {
+          moveItem(sections, from, to);
+          renderSections();
+          dispatchChange();
+        }
+      );
+
+      sectionsList.appendChild(li);
+    });
+
+    // ── Event listeners on newly rendered elements ──
+
+    // Add to sequence on badge click
+    sectionsList.querySelectorAll<HTMLButtonElement>(".sm-add-to-sequence").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        structure.push(btn.dataset.name!);
+        renderSequence();
+        dispatchChange();
+      });
+    });
+
+    // Remove section
+    sectionsList.querySelectorAll<HTMLButtonElement>(".sm-remove-section").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const i = parseInt(btn.dataset.index!, 10);
+        const removedName = sections[i].name;
+        sections.splice(i, 1);
+        // Also remove all occurrences from structure
+        structure = structure.filter((s) => s !== removedName);
+        renderSections();
+        renderSequence();
+        dispatchChange();
+      });
+    });
+
+    // Inline field edits (bars, repeats, chords)
+    sectionsList.querySelectorAll<HTMLInputElement>(".sm-input[data-field]").forEach((input) => {
+      input.addEventListener("change", () => {
+        const i     = parseInt(input.dataset.index!, 10);
+        const field = input.dataset.field as "bars" | "repeats" | "chords";
+
+        if (field === "chords") {
+          sections[i].chords = input.value
+            .split(",")
+            .map((c) => c.trim())
+            .filter(Boolean);
+        } else {
+          sections[i][field] = Math.max(1, parseInt(input.value, 10) || 1);
+          // Clamp the input value visually too
+          input.value = String(sections[i][field]);
+        }
+
+        dispatchChange();
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render — structure sequence
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Re-renders the structure sequence chips and re-attaches drag / remove
+   * listeners. Also toggles the empty-state message.
+   */
+  function renderSequence(): void {
+    sequenceEl.innerHTML = "";
+    sequenceEmpty.style.display = structure.length === 0 ? "block" : "none";
+
+    structure.forEach((name, index) => {
+      const chip = document.createElement("div");
+      chip.className = "sm-chip";
+      chip.dataset.index = String(index);
+
+      chip.innerHTML = `
+        <span class="sm-chip-name">${name}</span>
+        <button type="button"
+                class="sm-chip-remove"
+                data-index="${index}"
+                aria-label="Remove ${name} from sequence">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none"
+               stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6"  y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      `;
+
+      // Drag reorder for sequence
+      attachDrag(
+        chip,
+        "sequence",
+        () => parseInt(chip.dataset.index!, 10),
+        (from, to) => {
+          moveItem(structure, from, to);
+          renderSequence();
+          dispatchChange();
+        }
+      );
+
+      // Remove single sequence entry
+      chip.querySelector<HTMLButtonElement>(".sm-chip-remove")!
+        .addEventListener("click", (e) => {
+          e.stopPropagation();
+          structure.splice(index, 1);
+          renderSequence();
+          dispatchChange();
+        });
+
+      sequenceEl.appendChild(chip);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Add section
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Reads the new-section name input, validates it, creates a default
+   * Section object, appends it to state, and re-renders.
+   */
+  function addSection(): void {
+    const name = newNameInput.value.trim().toLowerCase().replace(/\s+/g, "-");
+    if (!name) {
+      newNameInput.focus();
+      return;
+    }
+
+    // Prevent duplicate section names
+    if (sections.find((s) => s.name === name)) {
+      newNameInput.setCustomValidity(`A section named "${name}" already exists`);
+      newNameInput.reportValidity();
+      return;
+    }
+
+    newNameInput.setCustomValidity("");
+    sections.push({ name, chords: [], bars: 4, repeats: 1 });
+    newNameInput.value = "";
+    renderSections();
+    dispatchChange();
+  }
+
+  addBtn.addEventListener("click", addSection);
+
+  // Allow Enter key in the name input to add the section
+  newNameInput.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addSection();
+    }
+  });
+
+  // Clear custom validity on input so the error doesn't linger
+  newNameInput.addEventListener("input", () => {
+    newNameInput.setCustomValidity("");
+  });
+
+  // ---------------------------------------------------------------------------
+  // Initial render
+  // ---------------------------------------------------------------------------
+
+  renderSections();
+  renderSequence();
+
+  })();
+</script>
+
+<style>
+  /* -------------------------------------------------------------------------
+   * All classes are prefixed "sm-" to avoid collisions.
+   * ------------------------------------------------------------------------- */
+
+  .section-manager {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6, 24px);
+  }
+
+  /* ── Block (sections list / sequence) ───────────────────────────────────── */
+
+  .sm-block {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid #3a300f;
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .sm-block-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .sm-block-title {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #e8a030;
+  }
+
+  .sm-hint {
+    font-size: 0.72rem;
+    color: #7a6a44;
+    font-style: italic;
+  }
+
+  /* ── Sections list ──────────────────────────────────────────────────────── */
+
+  .sm-sections-list {
+    list-style: none;
+    margin: 0 0 14px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sm-empty-hint {
+    color: #7a6a44;
+    font-style: italic;
+    font-size: 0.85rem;
+    padding: 8px 4px;
+  }
+
+  .sm-section-item {
+    background: #1a1508;
+    border: 1px solid #3a300f;
+    border-radius: 6px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    cursor: default;
+    transition: border-color 0.15s;
+  }
+
+  .sm-section-item.sm-dragging {
+    opacity: 0.45;
+    border-style: dashed;
+  }
+
+  .sm-section-item.sm-drag-over {
+    border-color: #e8a030;
+    background: rgba(232, 160, 48, 0.06);
+  }
+
+  /* Section header row */
+  .sm-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .sm-drag-handle {
+    color: #5a4a2f;
+    cursor: grab;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .sm-drag-handle:active {
+    cursor: grabbing;
+  }
+
+  /* Section name badge — click to add to sequence */
+  .sm-section-badge {
+    background: #3a300f;
+    border: 1px solid #5a4a2f;
+    border-radius: 20px;
+    color: #d4bb88;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+
+  .sm-section-badge:hover {
+    background: #e8a030;
+    border-color: #e8a030;
+    color: #1a1508;
+  }
+
+  /* Bars / Repeats meta row */
+  .sm-section-meta {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .sm-meta-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: #7a6a44;
+    white-space: nowrap;
+  }
+
+  .sm-meta-label span {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* Chord row */
+  .sm-chord-row {
+    padding-left: 26px; /* align with badge, past drag handle */
+  }
+
+  .sm-chord-label {
+    display: grid;
+    gap: 4px;
+    font-size: 0.78rem;
+    color: #7a6a44;
+  }
+
+  .sm-chord-label span {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  small {
+    font-size: 0.7rem;
+    color: #5a4a2f;
+    line-height: 1.3;
+  }
+
+  /* ── Add section row ────────────────────────────────────────────────────── */
+
+  .sm-add-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .sm-new-name {
+    flex: 1;
+  }
+
+  /* ── Shared input style ─────────────────────────────────────────────────── */
+
+  .sm-input {
+    padding: 0.5rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid #3a300f;
+    background: #000;
+    color: #d4bb88;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.85rem;
+    width: 100%;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .sm-input:focus {
+    outline: none;
+    border-color: #7a6a44;
+    box-shadow: 0 0 0 2px rgba(122, 106, 68, 0.2);
+  }
+
+  .sm-input::placeholder {
+    color: #5a4a2f;
+  }
+
+  .sm-mini {
+    width: 56px;
+    padding: 0.35rem 0.5rem;
+    text-align: center;
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────────────────── */
+
+  .sm-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.5rem 0.9rem;
+    border-radius: 6px;
+    border: 1px solid #3a300f;
+    background: #1a1508;
+    color: #d4bb88;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .sm-btn--add:hover {
+    background: #e8a030;
+    border-color: #e8a030;
+    color: #1a1508;
+  }
+
+  .sm-btn--remove {
+    padding: 0.35rem;
+    border-radius: 50%;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .sm-btn--remove:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: #fff;
+  }
+
+  /* ── Sequence area ──────────────────────────────────────────────────────── */
+
+  .sm-sequence {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 48px;
+    align-items: flex-start;
+    align-content: flex-start;
+  }
+
+  .sm-sequence-empty {
+    margin: 6px 0 0;
+    font-size: 0.8rem;
+    font-style: italic;
+    color: #5a4a2f;
+  }
+
+  /* Individual sequence chip */
+  .sm-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px 5px 12px;
+    background: #3a300f;
+    border: 1px solid #5a4a2f;
+    border-radius: 20px;
+    cursor: grab;
+    transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+    user-select: none;
+  }
+
+  .sm-chip:active {
+    cursor: grabbing;
+  }
+
+  .sm-chip.sm-dragging {
+    opacity: 0.4;
+    border-style: dashed;
+  }
+
+  .sm-chip.sm-drag-over {
+    border-color: #e8a030;
+    background: rgba(232, 160, 48, 0.12);
+  }
+
+  .sm-chip-name {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #d4bb88;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .sm-chip-remove {
+    background: none;
+    border: none;
+    color: #7a6a44;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, transform 0.15s;
+    line-height: 1;
+  }
+
+  .sm-chip-remove:hover {
+    color: #ef4444;
+    transform: scale(1.2);
+  }
+
+  /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+  @media (max-width: 600px) {
+    .sm-section-header {
+      flex-wrap: wrap;
+    }
+
+    .sm-section-meta {
+      margin-left: 26px; /* align with badge */
+    }
+
+    .sm-add-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+</style>

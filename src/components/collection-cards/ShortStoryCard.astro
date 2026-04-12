@@ -16,6 +16,9 @@ interface Props {
 const { entry } = Astro.props;
 const { data } = entry;
 
+// Debug: Check if set data is being received
+console.log('ShortStoryCard entry data:', data);
+
 // Build meta array for BaseCard
 const meta: string[] = [];
 if (data.writtenAt) {
@@ -35,6 +38,7 @@ const readingTime = Math.ceil(wordCount / 200);
   badgeColor="var(--accent-green)"
   footer={`${readingTime} min read`}
   class="short-story-card"
+  dataSet={typeof data.set === 'string' ? data.set : ''}
 />
 
 <style>

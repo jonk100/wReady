@@ -104,7 +104,7 @@ const { initial } = Astro.props;
   const resetBtn = document.getElementById("form-reset-btn");
 
   // --- 1. Prefill Listener (Catch events from ChordAnalyser) ---
-  document.addEventListener("chord:create", (e: Event) => {
+  document.addEventListener("chord:create", async (e: Event) => {
     const customEvent = e as CustomEvent<{ 
       displayName: string; 
       frets: number[]; 
@@ -115,15 +115,29 @@ const { initial } = Astro.props;
     
     const { displayName, frets, notes, fingering, baseFret } = customEvent.detail;
 
+    // Import chord analysis utilities dynamically
+    const { generateChordSuffix, generateChordFingering, generateChordBarre } = await import('../../utils/music/chordUtils.ts');
+
+    // Determine the correct suffix based on fret pattern analysis
+    const suffix = generateChordSuffix(frets);
+    
+    // Generate barre data if it's a barre chord
+    const barreData = generateChordBarre(frets);
+    
+    // Generate proper fingering based on chord shape and chord type
+    const generatedFingering = generateChordFingering(frets, displayName);
+
     // Map incoming data to form inputs
     const fields: Record<string, string> = {
       displayName: displayName,
       frets: JSON.stringify(frets),
       notes: JSON.stringify(notes),
-      fingering: JSON.stringify(fingering || [0,0,0,0,0,0]),
+      fingering: JSON.stringify(generatedFingering),
       baseFret: String(baseFret || 1),
-      // Auto-generate a slug if empty
-      slug: displayName.toLowerCase().replace(/[^a-z0-9]/g, "") + "-0"
+      // Auto-generate a slug if empty with correct suffix
+      slug: displayName.toLowerCase().replace(/[^a-z0-9#]/g, "").replace(/#/g, "s") + `-${suffix}`,
+      // Auto-generate barre data if detected
+      barre: barreData ? JSON.stringify(barreData) : ""
     };
 
     Object.entries(fields).forEach(([name, value]) => {
@@ -148,32 +162,36 @@ const { initial } = Astro.props;
     const rawData = Object.fromEntries(formData.entries());
 
     try {
+      // Import actions dynamically for Astro compatibility
+      const { actions } = await import('astro:actions');
+      
+      // Send JSON data directly to the action
       const payload = {
-        slug: rawData.slug,
-        displayName: rawData.displayName,
-        voicingLabel: rawData.voicingLabel,
-        baseFret: parseInt(rawData.baseFret as string, 10),
+        slug: rawData.slug as string,
+        displayName: rawData.displayName as string,
+        voicingLabel: rawData.voicingLabel as string,
+        baseFret: rawData.baseFret as string,
         fingering: JSON.parse(rawData.fingering as string),
         frets: JSON.parse(rawData.frets as string),
-        notes: JSON.parse(rawData.notes as string || "[]"),
-        alternateNames: rawData.alternateNames ? JSON.parse(rawData.alternateNames as string) : undefined,
-        barre: rawData.barre ? JSON.parse(rawData.barre as string) : undefined
+        notes: rawData.notes as string,
+        alternateNames: rawData.alternateNames as string,
+        barre: rawData.barre as string,
       };
 
-      const res = await fetch("/api/chords/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const { data, error } = await actions.createChord(payload);
 
-      const result = await res.json();
-
-      if (result.success) {
-        statusEl.style.color = "#4ade80";
-        statusEl.textContent = `Success: Saved ${result.id}.mdx`;
-      } else {
+      if (error) {
         statusEl.style.color = "#f87171";
-        statusEl.textContent = `Error: ${result.message}`;
+        statusEl.textContent = `Error: ${error.message}`;
+      } else if (data.success) {
+        statusEl.style.color = "#4ade80";
+        statusEl.textContent = `Success: Saved ${data.id}.mdx`;
+        
+        // This is the magic part: reload after successful action
+        // to trigger fresh content rendering
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       }
     } catch (err) {
       statusEl.style.color = "#f87171";

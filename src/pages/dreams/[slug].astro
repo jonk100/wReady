@@ -1,0 +1,184 @@
+---
+import { getCollection, render } from "astro:content";
+import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const dreams = await getCollection("dreams");
+  return dreams.map((entry) => ({
+    params: { slug: entry.id }, 
+    props: { entry },
+  }));
+};
+
+interface Props {
+  entry: any;
+}
+
+const { entry } = Astro.props as Props;
+const { data } = entry;
+const { Content } = await render(entry);
+
+// Calculate reading time
+const wordCount = data.wordCount || 1000;
+const readingTime = Math.ceil(wordCount / 200);
+---
+
+<BaseLayout
+  title={data.title}
+  description={`Dream: ${data.title}`}
+>
+  <article class="dream-detail">
+    <header class="dream-header">
+      <div class="dream-info">
+        <h1 class="dream-title">{data.title}</h1>
+        
+        <div class="dream-meta">
+          {data.writtenAt && (
+            <div class="meta-item">
+              <span class="meta-label">Dream Date</span>
+              <span class="meta-value">{new Date(data.writtenAt).toLocaleDateString()}</span>
+            </div>
+          )}
+          
+          <div class="meta-item">
+            <span class="meta-label">Reading Time</span>
+            <span class="meta-value">{readingTime} min read</span>
+          </div>
+          
+          {data.wordCount && (
+            <div class="meta-item">
+              <span class="meta-label">Word Count</span>
+              <span class="meta-value">{data.wordCount.toLocaleString()}</span>
+            </div>
+          )}
+          
+          {data.status && (
+            <div class="meta-item">
+              <span class="meta-label">Status</span>
+              <span class="meta-value status-badge status-{data.status}">{data.status}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+
+    <section class="dream-content">
+      <div class="content-body">
+        <Content />
+      </div>
+    </section>
+  </article>
+</BaseLayout>
+
+<style>
+  .dream-detail {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: var(--space-8) 0;
+  }
+
+  .dream-header {
+    margin-bottom: var(--space-8);
+  }
+
+  .dream-title {
+    font-size: var(--text-4xl);
+    font-weight: 800;
+    line-height: 1.2;
+    margin: 0 0 var(--space-6) 0;
+    color: var(--text-primary);
+    font-style: italic;
+  }
+
+  .dream-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-4);
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .meta-label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .meta-value {
+    font-size: var(--text-base);
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .status-badge {
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .status-draft {
+    background-color: var(--accent-orange);
+    color: var(--text-on-accent);
+  }
+
+  .status-revised {
+    background-color: var(--accent-blue);
+    color: var(--text-on-accent);
+  }
+
+  .status-complete {
+    background-color: var(--accent-green);
+    color: var(--text-on-accent);
+  }
+
+  .dream-content {
+    margin-bottom: var(--space-8);
+  }
+
+  .content-body {
+    font-size: var(--text-lg);
+    line-height: 1.6;
+    color: var(--text-primary);
+  }
+
+  .content-body :is(h1, h2, h3, h4, h5, h6) {
+    color: var(--text-primary);
+    margin-top: var(--space-6);
+    margin-bottom: var(--space-3);
+  }
+
+  .content-body p {
+    margin-bottom: var(--space-4);
+  }
+
+  /* Dream-specific CSS variables */
+  :root {
+    --accent-blue: #154695;
+    --accent-orange: #f97316;
+    --accent-green: #10b981;
+  }
+
+  @media (max-width: 768px) {
+    .dream-detail {
+      padding: var(--space-6) 0;
+    }
+
+    .dream-title {
+      font-size: var(--text-3xl);
+    }
+
+    .dream-meta {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

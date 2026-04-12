@@ -1,5 +1,6 @@
 // @ts-check
 
+import 'dotenv/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import alpinejs from '@astrojs/alpinejs';
@@ -21,4 +22,14 @@ export default defineConfig({
 	],
 
   adapter: netlify(),
+
+  // Configure Vite to watch content collections and trigger page reloads
+  vite: {
+    server: {
+      watch: {
+        // Watch all content directories for changes
+        ignored: ['!**/node_modules/**', '!**/.git/**']
+      }
+    }
+  }
 });

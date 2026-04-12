@@ -3,7 +3,8 @@
  * SongCard.astro
  *
  * Renders a single song card using BaseCard as foundation.
- * Works specifically with song collection entries.
+ * Includes a delete button that floats above the card (outside BaseCard
+ * to avoid overflow:hidden clipping and the card's <a> tag stealing clicks).
  */
 
 import type { CollectionEntry } from "astro:content";
@@ -16,42 +17,30 @@ interface Props {
 const { entry } = Astro.props;
 const { data } = entry;
 
-// Helper to format key signature
+/** Formats key root and mode into a short label e.g. "Am", "G" */
 function formatKey(keyRoot: string, keyMode: string) {
   const modeSymbol = keyMode === 'minor' ? 'm' : '';
   return `${keyRoot}${modeSymbol}`;
 }
 
-// Helper to format time signature
+/** Formats time signature as "4/4" */
 function formatTimeSignature(top: number, bottom: number) {
   return `${top}/${bottom}`;
 }
 
-// Helper to get key color
+/** Returns the CSS colour variable for a key mode */
 function getKeyColor(keyMode: string) {
   return keyMode === 'minor' ? 'var(--key-minor)' : 'var(--key-major)';
 }
 
-// Build meta array for BaseCard
 const meta: string[] = [];
 meta.push(formatKey(data.keyRoot, data.keyMode));
-
-if (data.tempo) {
-  meta.push(`${data.tempo} BPM`);
-}
-
+if (data.tempo) meta.push(`${data.tempo} BPM`);
 meta.push(formatTimeSignature(data.timeSignatureTop, data.timeSignatureBottom));
+if (data.chordVoicings.length > 0) meta.push(`${data.chordVoicings.length} chords`);
 
-if (data.chordVoicings.length > 0) {
-  meta.push(`${data.chordVoicings.length} chords`);
-}
-
-// Build footer text
 const footer: string[] = [];
-if (data.album && 'data' in data.album && (data.album.data as any)?.title) {
-  footer.push(`Album: ${(data.album.data as any).title}`);
-}
-
+if (data.album) footer.push(`Album: ${data.album}`);
 if (data.structure.length > 0) {
   const sectionMap = new Map(data.sections.map((s: any) => [s.name, s]));
   const totalBars = data.structure.reduce((total: number, sectionName: string) => {
@@ -62,19 +51,120 @@ if (data.structure.length > 0) {
 }
 ---
 
-<BaseCard
-  href={`/songs/${entry.id}`}
-  title={data.title}
-  badge={formatKey(data.keyRoot, data.keyMode)}
-  badgeColor={getKeyColor(data.keyMode)}
-  meta={meta}
-  footer={footer.length > 0 ? footer.join(' • ') : undefined}
-  class="song-card"
-/>
+<div class="song-card-wrap">
+  <BaseCard
+    href={`/songs/${entry.id}`}
+    title={data.title}
+    badge={formatKey(data.keyRoot, data.keyMode)}
+    badgeColor={getKeyColor(data.keyMode)}
+    meta={meta}
+    footer={footer.length > 0 ? footer.join(' • ') : undefined}
+    class="song-card"
+  />
+
+  <button
+    class="card-delete-btn"
+    data-slug={entry.id}
+    data-collection="songs"
+    aria-label={`Delete song ${data.title}`}
+    title={`Delete ${data.title}`}
+  >
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+      stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <polyline points="3 6 5 6 21 6"></polyline>
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+      <path d="M10 11v6"></path>
+      <path d="M14 11v6"></path>
+      <path d="M9 6V4h6v2"></path>
+    </svg>
+  </button>
+</div>
+
+<script>
+  /**
+   * Wires delete buttons on all song cards on the page.
+   * Script is hoisted — runs once — querySelectorAll handles all instances.
+   */
+  document.querySelectorAll<HTMLButtonElement>(
+    '.card-delete-btn[data-collection="songs"]'
+  ).forEach((btn) => {
+    btn.addEventListener('click', async (e: MouseEvent): Promise<void> => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const slug = btn.dataset.slug ?? '';
+      if (!slug) return;
+
+      if (!window.confirm(`Delete song "${slug}"? This cannot be undone.`)) return;
+
+      btn.disabled = true;
+
+      try {
+        const { actions } = await import('astro:actions');
+        const { data, error } = await actions.deleteSong({ slug });
+
+        if (error || !data?.success) {
+          window.alert(`Error: ${error?.message ?? data?.message ?? 'Delete failed'}`);
+          btn.disabled = false;
+          return;
+        }
+
+        btn.closest<HTMLElement>('.song-card-wrap')?.remove();
+        setTimeout(() => window.location.reload(), 400);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Unexpected error');
+        btn.disabled = false;
+      }
+    });
+  });
+</script>
 
 <style>
+  .song-card-wrap {
+    position: relative;
+    overflow: visible;
+  }
+
+  .card-delete-btn {
+    position: absolute;
+    bottom: var(--space-2);
+    right: var(--space-2);
+    z-index: 2;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+
+    background: var(--bg-card);
+    border: 1px solid transparent;
+    border-radius: 50%;
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s, border-color 0.15s, background 0.15s;
+  }
+
+  .song-card-wrap:hover .card-delete-btn {
+    opacity: 1;
+  }
+
+  .card-delete-btn:hover {
+    color: #f87171;
+    border-color: #f87171;
+    background: color-mix(in srgb, #f87171 12%, var(--bg-card));
+  }
+
+  .card-delete-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
   .song-card {
-    /* Song-specific styling */
     --key-major: #3b82f6;
     --key-minor: #ef4444;
   }

@@ -1,0 +1,77 @@
+---
+/**
+ * AutoRefresh component
+ * 
+ * Monitors content collection changes and automatically refreshes the page
+ * when new items are added via the API. This works around Astro's limitation
+ * where content collection changes don't always trigger page reloads.
+ */
+---
+
+<script>
+  (() => {
+    let lastKnownCount = 0;
+    let refreshInterval: number;
+    
+    // Only run on index pages (songs, chords, etc.)
+    if (!window.location.pathname.match(/^\/(songs|chords)(\/.*)?$/)) {
+      return;
+    }
+    
+    async function checkForChanges(): Promise<void> {
+      try {
+        // Get current count from the page
+        const gridElement = document.querySelector('.grid');
+        if (!gridElement) return;
+        
+        const currentCount = gridElement.children.length;
+        
+        // If count increased, refresh the page
+        if (lastKnownCount > 0 && currentCount > lastKnownCount) {
+          console.log('AutoRefresh: New content detected, refreshing page...');
+          window.location.reload();
+        }
+        
+        lastKnownCount = currentCount;
+      } catch (error) {
+        console.error('AutoRefresh: Error checking for changes:', error);
+      }
+    }
+    
+    // Initial count
+    setTimeout(checkForChanges, 1000);
+    
+    // Check every 2 seconds when page is visible, less frequently when hidden
+    function startPolling(): void {
+      refreshInterval = window.setInterval(() => {
+        if (!document.hidden) {
+          checkForChanges();
+        }
+      }, 2000);
+    }
+    
+    // Start polling after page loads
+    if (document.readyState === 'complete') {
+      startPolling();
+    } else {
+      window.addEventListener('load', startPolling);
+    }
+    
+    // Clean up when page unloads
+    window.addEventListener('beforeunload', () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    });
+    
+    // Listen for visibility changes to adjust polling frequency
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = 0;
+      } else if (!document.hidden && !refreshInterval) {
+        startPolling();
+      }
+    });
+  })();
+</script>
