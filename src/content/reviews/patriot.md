@@ -45,6 +45,26 @@ overview: >-
   To prevent Iran from going nuclear, intelligence officer John Tavner must
   forgo all safety nets and assume a perilous "non-official cover" -- that of a
   mid-level employee at a Midwestern industrial piping firm....
+tmdbRating: 7.6
+castDetailed:
+  - id: 76068
+    name: Michael Dorman
+    character: John Tavner
+  - id: 12646
+    name: Terry O'Quinn
+    character: Tom Tavner
+  - id: 2115
+    name: Kurtwood Smith
+    character: Leslie Claret
+  - id: 87070
+    name: Michael Chernus
+    character: Edward Tavner
+  - id: 168610
+    name: Kathleen Munroe
+    character: Alice Tavner
+  - id: 227199
+    name: Chris Conrad
+    character: Dennis McClaren
 ---
 
 ## Steven Conrad is a Genius Storyteller

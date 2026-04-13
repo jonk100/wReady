@@ -1,0 +1,280 @@
+---
+/**
+ * TmdbSearch.astro
+ *
+ * Self-contained TMDB search widget for movies and TV shows.
+ *
+ * Usage:
+ *   <TmdbSearch category="movie" />
+ *   <TmdbSearch category="tv" />
+ *
+ * Dispatches a `tmdb:selected` CustomEvent on the document when the user
+ * picks a result. The parent form listens for this event and uses the
+ * detail payload to populate its own inputs.
+ *
+ * Event detail shape:
+ *   {
+ *     tmdbId:             number;
+ *     title:              string;
+ *     year:               string;
+ *     imdbId:             string;
+ *     imdbRating:         string;
+ *     writers:            string;   // comma-separated
+ *     directors:          string;   // comma-separated
+ *     productionCompanies:string;   // comma-separated
+ *     channel:            string;
+ *     cast:               Array<{ id: number; name: string; character: string }>;
+ *   }
+ */
+
+export type Props = {
+  /** The media type — controls which TMDB endpoint is searched. */
+  category: 'movie' | 'tv';
+};
+
+const { category } = Astro.props;
+---
+
+<div class="tmdb-search" data-category={category}>
+  <div class="search-row">
+    <input
+      type="text"
+      class="tmdb-query"
+      placeholder={`Search TMDB for ${category === 'tv' ? 'TV show' : 'movie'}…`}
+      autocomplete="off"
+    />
+    <button type="button" class="tmdb-search-btn">Search</button>
+    <button type="button" class="tmdb-clear-btn" hidden>Clear</button>
+  </div>
+
+  <ul class="tmdb-results" hidden aria-label="TMDB search results"></ul>
+
+  <!-- Exposed so the parent form can read the selected TMDB ID via querySelector -->
+  <input type="hidden" class="tmdb-id-out" name="tmdbId" value="" />
+</div>
+
+<script>
+  /**
+   * Boot all TmdbSearch widgets on the page.
+   * Each widget is fully independent — multiple instances are safe.
+   */
+  document.querySelectorAll<HTMLElement>('.tmdb-search').forEach((root) => {
+    const category  = root.dataset.category as 'movie' | 'tv';
+    const queryInput  = root.querySelector<HTMLInputElement>('.tmdb-query')!;
+    const searchBtn   = root.querySelector<HTMLButtonElement>('.tmdb-search-btn')!;
+    const clearBtn    = root.querySelector<HTMLButtonElement>('.tmdb-clear-btn')!;
+    const resultsList = root.querySelector<HTMLUListElement>('.tmdb-results')!;
+    const idOut       = root.querySelector<HTMLInputElement>('.tmdb-id-out')!;
+
+    // ── Search ────────────────────────────────────────────────────────────────
+
+    /**
+     * Calls the searchTMDB action and renders results into the list.
+     */
+    async function runSearch(): Promise<void> {
+      const query = queryInput.value.trim();
+      if (!query) return;
+
+      searchBtn.textContent = '…';
+      searchBtn.disabled = true;
+
+      try {
+        const res  = await fetch('/_actions/searchTMDB', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ query, category }),
+        });
+
+        const raw = await res.text();
+
+        // Astro Actions wraps the return value in an array envelope.
+        let results: any[] = [];
+        try {
+          const parsed = JSON.parse(raw);
+          const first  = Array.isArray(parsed) ? parsed[0] : parsed;
+          results = typeof first === 'string' ? JSON.parse(first) : (first ?? []);
+        } catch {
+          results = [];
+        }
+
+        renderResults(results);
+      } catch (err) {
+        console.error('[TmdbSearch] fetch error', err);
+        renderResults([]);
+      } finally {
+        searchBtn.textContent = 'Search';
+        searchBtn.disabled = false;
+      }
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+
+    /**
+     * Renders an array of TMDB result objects as clickable list items.
+     * @param {any[]} results - Array of enriched TMDB result objects.
+     */
+    function renderResults(results: any[]): void {
+      resultsList.innerHTML = '';
+
+      if (results.length === 0) {
+        resultsList.innerHTML = '<li class="tmdb-empty">No results found.</li>';
+        resultsList.hidden = false;
+        return;
+      }
+
+      results.forEach((item) => {
+        const year  = (item.release_date ?? item.first_air_date ?? '').slice(0, 4);
+        const title = item.title ?? item.name ?? '';
+
+        const li = document.createElement('li');
+        li.className = 'tmdb-result-item';
+        li.innerHTML = `
+          <strong>${title}</strong>
+          ${year ? `<span class="tmdb-year">(${year})</span>` : ''}
+          ${item.overview
+            ? `<span class="tmdb-overview">${item.overview.slice(0, 120)}…</span>`
+            : ''}
+        `;
+
+        li.addEventListener('click', () => selectResult(item, li));
+        resultsList.appendChild(li);
+      });
+
+      resultsList.hidden = false;
+    }
+
+    // ── Select ────────────────────────────────────────────────────────────────
+
+    /**
+     * Handles selection of a TMDB result.
+     * Writes the TMDB ID into the hidden output input, hides the list,
+     * and dispatches `tmdb:selected` so the parent form can fill its fields.
+     *
+     * @param {any}         item - The raw TMDB result object.
+     * @param {HTMLElement} el   - The clicked list item element.
+     */
+    function selectResult(item: any, el: HTMLElement): void {
+      // Mark selection visually
+      resultsList.querySelectorAll('.tmdb-result-item').forEach((li) =>
+        li.classList.remove('selected')
+      );
+      el.classList.add('selected');
+
+      // Write ID to hidden output
+      idOut.value = String(item.id ?? '');
+
+      // Hide results, show clear
+      resultsList.hidden = true;
+      clearBtn.hidden = false;
+
+      // Dispatch event for the parent form to consume
+      document.dispatchEvent(new CustomEvent('tmdb:selected', {
+        bubbles: true,
+        detail: {
+          tmdbId:              item.id,
+          title:               item.title ?? item.name ?? '',
+          year:                (item.release_date ?? item.first_air_date ?? '').slice(0, 4),
+          imdbId:              item.imdbId ?? '',
+          imdbRating:          item.imdbRating != null ? String(item.imdbRating) : '',
+          writers:             Array.isArray(item.writers)             ? item.writers.join(', ')             : '',
+          directors:           Array.isArray(item.directors)           ? item.directors.join(', ')           : '',
+          productionCompanies: Array.isArray(item.productionCompanies) ? item.productionCompanies.join(', ') : '',
+          channel:             item.channel ?? '',
+          cast:                Array.isArray(item.cast) ? item.cast : [],
+        },
+      }));
+    }
+
+    // ── Clear ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Resets the widget back to its initial empty state and notifies the
+     * parent form via a `tmdb:cleared` event so it can blank its own fields.
+     */
+    function clearSearch(): void {
+      queryInput.value  = '';
+      idOut.value       = '';
+      resultsList.innerHTML = '';
+      resultsList.hidden    = true;
+      clearBtn.hidden       = true;
+
+      document.dispatchEvent(new CustomEvent('tmdb:cleared', { bubbles: true }));
+    }
+
+    // ── Listeners ─────────────────────────────────────────────────────────────
+
+    searchBtn.addEventListener('click', runSearch);
+    clearBtn.addEventListener('click', clearSearch);
+
+    /** Allow Enter key to trigger search from the query input. */
+    queryInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        runSearch();
+      }
+    });
+  });
+</script>
+
+<style>
+  .tmdb-search {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .search-row {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .search-row input {
+    flex: 1;
+  }
+
+  .tmdb-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-raised);
+  }
+
+  .tmdb-result-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background var(--transition-fast);
+    font-size: var(--text-sm);
+  }
+
+  .tmdb-result-item:last-child { border-bottom: none; }
+
+  .tmdb-result-item:hover { background: var(--bg-card-hover); }
+
+  .tmdb-result-item.selected { background: var(--accent-subtle); }
+
+  .tmdb-year {
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    margin-left: var(--space-1);
+  }
+
+  .tmdb-overview {
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    line-height: 1.4;
+  }
+
+  .tmdb-empty {
+    padding: var(--space-3) var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+</style>

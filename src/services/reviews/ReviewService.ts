@@ -1,7 +1,8 @@
 import { writeContentFile } from '../../utils/infra/fileOperator';
 import { ContentReader } from '../../utils/infra/contentReader';
 import { downloadImage } from '../../utils/infra/download';
-import { getTMDBItem, searchTMDB, pickBestMatch, getPosterUrl, fetchCast, type TMDBMediaType } from '../../utils/infra/tmdb';
+import { getTMDBItem, searchTMDB, pickBestMatch, getPosterUrl, fetchCast, getExternalIds, type TMDBMediaType } from '../../utils/infra/tmdb';
+import { getImdbRating } from '../../utils/infra/omdb';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import matter from 'gray-matter';
@@ -68,6 +69,21 @@ export const ReviewService = {
     tmdbId?: number;
     cast?: string[];
     body?: string;
+    overallAssessment?: string;
+    writingScore?: number;
+    cohesionScore?: number;
+    performancesScore?: number;
+    pacingScore?: number;
+    productionScore?: number;
+    cinematographyScore?: number;
+    soundScore?: number;
+    writingBody?: string;
+    cohesionBody?: string;
+    performancesBody?: string;
+    pacingBody?: string;
+    productionBody?: string;
+    cinematographyBody?: string;
+    soundBody?: string;
   }) {
     const { slug, tmdbId, category, cast, ...data } = params;
 
@@ -93,6 +109,7 @@ export const ReviewService = {
           tmdbId: tmdbData.id,
           tmdbType,
           tmdbSlug: slug,
+          tmdbRating: tmdbData.vote_average,
           year: (data as any).year ?? (tmdbData.release_date || tmdbData.first_air_date || '').slice(0, 4),
           overview: (data as any).overview ?? (tmdbData.overview?.slice(0, 450) + '...'),
         };
@@ -132,6 +149,24 @@ export const ReviewService = {
         // Add channel for TV shows with normalization
         if (category === 'tv' && tmdbData.networks && tmdbData.networks.length > 0) {
           enrichedData.channel = normalizeChannel(tmdbData.networks[0].name);
+        }
+
+        // Fetch external IDs and enrich with IMDb data
+        const externalIds = await getExternalIds(tmdbId, tmdbType);
+        if (externalIds.imdb_id) {
+          console.debug('[ReviewService] Found IMDb ID', externalIds.imdb_id);
+          enrichedData.imdbId = externalIds.imdb_id;
+
+          // Fetch IMDb rating from OMDb
+          const imdbRating = await getImdbRating(externalIds.imdb_id);
+          if (imdbRating !== null) {
+            console.debug('[ReviewService] Successfully fetched IMDb rating', { imdbId: externalIds.imdb_id, imdbRating });
+            enrichedData.imdbRating = imdbRating;
+          } else {
+            console.warn('[ReviewService] Failed to fetch IMDb rating for', externalIds.imdb_id);
+          }
+        } else {
+          console.debug('[ReviewService] No IMDb ID found for TMDB item', tmdbId);
         }
       }
     }
@@ -176,23 +211,130 @@ export const ReviewService = {
       enrichedData.cast = castSlugs;
     }
 
-    // Add castDetailed field if we have cast data
+    // Add castDetailed if we have it
     if (castDetailed.length > 0) {
       enrichedData.castDetailed = castDetailed;
     }
 
-    // 4. Strip undefined values and remove duplicate body field
+    // Calculate final score from category scores if all are provided
+    const {
+      writingScore,
+      cohesionScore,
+      performancesScore,
+      pacingScore,
+      productionScore,
+      cinematographyScore,
+      soundScore,
+    } = params;
+
+    if (
+      writingScore !== undefined &&
+      cohesionScore !== undefined &&
+      performancesScore !== undefined &&
+      pacingScore !== undefined &&
+      productionScore !== undefined &&
+      cinematographyScore !== undefined &&
+      soundScore !== undefined
+    ) {
+      // Formula: (W × 0.20) + (C × 0.20) + (P × 0.15) + (Pa × 0.15) + (Pr × 0.10) + (Ci × 0.10) + (S × 0.10)
+      const finalScore =
+        writingScore * 0.20 +
+        cohesionScore * 0.20 +
+        performancesScore * 0.15 +
+        pacingScore * 0.15 +
+        productionScore * 0.10 +
+        cinematographyScore * 0.10 +
+        soundScore * 0.10;
+
+      enrichedData.finalScore = Math.round(finalScore * 10) / 10; // Round to 1 decimal place
+    }
+
+    // 4. Transform category bodies into markdown sections and combine with overview
+    const {
+      writingBody,
+      cohesionBody,
+      performancesBody,
+      pacingBody,
+      productionBody,
+      cinematographyBody,
+      soundBody,
+    } = params;
+
+    const categoryScores = {
+      writing: params.writingScore,
+      cohesion: params.cohesionScore,
+      performances: params.performancesScore,
+      pacing: params.pacingScore,
+      production: params.productionScore,
+      cinematography: params.cinematographyScore,
+      sound: params.soundScore,
+    };
+
+    const categoryNames = {
+      writing: 'Writing',
+      cohesion: 'Cohesion',
+      performances: 'Performances',
+      pacing: 'Pacing',
+      production: 'Production',
+      cinematography: 'Cinematography',
+      sound: 'Sound',
+    };
+
+    const categoryBodies = {
+      writing: writingBody,
+      cohesion: cohesionBody,
+      performances: performancesBody,
+      pacing: pacingBody,
+      production: productionBody,
+      cinematography: cinematographyBody,
+      sound: soundBody,
+    };
+
+    let combinedBody = '';
+
+    // Add title section
+    combinedBody += `# ${params.title}\n\n`;
+
+    // Add Overall Assessment section (H2)
+    if (params.overallAssessment) {
+      combinedBody += `## Overall Assessment\n\n${params.overallAssessment}\n\n`;
+    }
+
+    // Define category order: writing, performances, pacing, production, cinematography, sound, cohesion
+    const categoryOrder = ['writing', 'performances', 'pacing', 'production', 'cinematography', 'sound', 'cohesion'];
+
+    // Add category sections if score is provided (use H3 for categories)
+    for (const key of categoryOrder) {
+      const name = categoryNames[key as keyof typeof categoryNames];
+      const score = categoryScores[key as keyof typeof categoryScores];
+      const bodyText = categoryBodies[key as keyof typeof categoryBodies];
+
+      if (score !== undefined) {
+        combinedBody += `### ${name} Analysis (${score})\n\n`;
+        // Always write something under the heading. Remark's MDX parser drops
+        // headings that have no content before the next sibling heading, which
+        // causes them to silently disappear on the rendered page.
+        combinedBody += bodyText ? `${bodyText}\n\n` : `<!-- ${name} notes pending -->\n\n`;
+      }
+    }
+
+    // Add Conclusion section (H2, was Overall Analysis)
+    if (params.body) {
+      combinedBody += `## Conclusion\n\n${params.body}`;
+    }
+
+    // 5. Strip undefined values and remove duplicate body field
     const { body, ...dataWithoutBody } = enrichedData;
     const cleanData = Object.fromEntries(
       Object.entries(dataWithoutBody).filter(([, value]) => value !== undefined)
     );
 
-    // 5. Write to disk - the SSR page will pick this up on next request
+    // 6. Write to disk - the SSR page will pick this up on next request
     const result = await writeContentFile({
       collection: 'reviews',
       slug,
       data: cleanData,
-      body: params.body || '',
+      body: combinedBody,
     });
 
     return { id: result.slug, success: true };
@@ -209,22 +351,83 @@ export const ReviewService = {
   },
 
   /**
-   * Search TMDB for movies/TV shows by title and return all results.
+   * Search TMDB for movies/TV shows by title and return all results with enrichment data.
    * Used for the search interface where users can select from multiple options.
    */
   async searchTMDBResults(query: string, category: 'movie' | 'tv'): Promise<string> {
     const tmdbType = category === 'movie' ? 'movie' : 'tv';
     const results = await searchTMDB(query, tmdbType);
     
-    // Convert to simple objects and return as JSON string
-    const simplifiedResults = results.map(item => ({
-      id: item.id,
-      title: item.title || item.name || '',
-      release_date: item.release_date || item.first_air_date || '',
-      overview: item.overview || ''
-    }));
-    
-    return JSON.stringify(simplifiedResults);
+    // Fetch detailed data for each result including external IDs and credits
+    const enrichedResults = await Promise.all(
+      results.map(async (item) => {
+        const tmdbData: any = await getTMDBItem(item.id, tmdbType);
+        if (!tmdbData) return null;
+
+        const externalIds = await getExternalIds(item.id, tmdbType);
+        
+        // Fetch IMDb rating if we have an IMDb ID
+        let imdbRating = null;
+        if (externalIds.imdb_id) {
+          imdbRating = await getImdbRating(externalIds.imdb_id);
+        }
+
+        // Get writers/directors
+        let writers: string[] = [];
+        let directors: string[] = [];
+        
+        if (tmdbData.created_by) {
+          writers = tmdbData.created_by.map((w: any) => w.name);
+        }
+        
+        if (category === 'movie' && tmdbData.credits?.crew) {
+          directors = tmdbData.credits.crew
+            .filter((c: any) => c.job === 'Director')
+            .map((d: any) => d.name);
+        }
+
+        // Get production companies
+        const productionCompanies = tmdbData.production_companies 
+          ? tmdbData.production_companies.map((pc: any) => pc.name)
+          : [];
+
+        // Get channel for TV shows
+        let channel: string | null = null;
+        if (category === 'tv' && tmdbData.networks && tmdbData.networks.length > 0) {
+          channel = normalizeChannel(tmdbData.networks[0].name);
+        }
+
+        // Get cast (top 3)
+        const apiKey = process.env.TMDB_API_KEY;
+        let cast: any[] = [];
+        if (apiKey) {
+          const tmdbCast = await fetchCast(item.id, tmdbType, apiKey);
+          cast = tmdbCast.slice(0, 3).map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            character: c.character
+          }));
+        }
+
+        return {
+          id: item.id,
+          title: item.title || item.name || '',
+          release_date: item.release_date || item.first_air_date || '',
+          overview: item.overview || '',
+          imdbId: externalIds.imdb_id,
+          imdbRating,
+          writers,
+          directors,
+          productionCompanies,
+          channel,
+          cast
+        };
+      })
+    );
+
+    // Filter out null results and return as JSON string
+    const validResults = enrichedResults.filter(r => r !== null);
+    return JSON.stringify(validResults);
   },
 
   /**

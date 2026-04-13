@@ -17,7 +17,7 @@ export default defineConfig({
       alpinejs(),
       mdx({
           remarkPlugins: [remarkScreenplay],
-      }), 
+      }),
       sitemap()
 	],
 

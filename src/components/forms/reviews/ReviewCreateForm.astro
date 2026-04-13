@@ -1,0 +1,541 @@
+---
+/**
+ * ReviewCreateForm.astro
+ *
+ * Form for creating new reviews with optional TMDB integration.
+ *
+ * Shell chrome (reset button, amber summary bar, collapsible details, toggle
+ * chevron) is handled by `FormShell.astro`. Toggle/reset JS and the
+ * `setStatus` helper are provided by `initFormShell` from
+ * `src/utils/formShell.ts`.
+ *
+ * Sub-components:
+ *   - TmdbSearch   — handles TMDB search and dispatches `tmdb:selected`
+ *   - CastSelector — handles actor search/selection, listens for `tmdb:selected`
+ *   - ScoreField   — reusable score input + analysis textarea pair
+ */
+
+import FormShell   from '../FormShell.astro';
+import TmdbSearch   from './TmdbSearch.astro';
+import CastSelector from './CastSelector.astro';
+import ScoreField   from './ScoreField.astro';
+
+export type Props = {
+  /** Optional prefill values — useful for edit flows or defaults. */
+  initial?: {
+    slug?:                 string;
+    title?:                string;
+    subtitle?:             string;
+    category?:             'book' | 'movie' | 'album' | 'game' | 'restaurant' | 'product' | 'tv';
+    pubDate?:              string;
+    url?:                  string;
+    imdbId?:               string;
+    imdbRating?:           number;
+    rottenTomatoesId?:     string;
+    rottenTomatoesRating?: number;
+    writers?:              string;
+    directors?:            string;
+    productionCompanies?:  string;
+    channel?:              string;
+    tags?:                 string;
+    themes?:               string;
+    season?:               number;
+    episode?:              number;
+    episodes?:             number;
+    cast?:                 string[];
+    // Scores
+    writingScore?:         number;
+    cohesionScore?:        number;
+    performancesScore?:    number;
+    pacingScore?:          number;
+    productionScore?:      number;
+    cinematographyScore?:  number;
+    soundScore?:           number;
+    // Bodies
+    writingBody?:          string;
+    cohesionBody?:         string;
+    performancesBody?:     string;
+    pacingBody?:           string;
+    productionBody?:       string;
+    cinematographyBody?:   string;
+    soundBody?:            string;
+    overallAssessment?:    string;
+    body?:                 string;
+  };
+};
+
+const { initial = {} } = Astro.props;
+
+/** Today's date formatted as YYYY-MM-DD for the pubDate default. */
+const todayIso = new Date().toISOString().slice(0, 10);
+
+const isTmdbCategory = initial.category === 'movie' || initial.category === 'tv';
+const isTvCategory   = initial.category === 'tv';
+---
+
+<FormShell label="Add a new review" showToggle>
+  <form id="review-create-form" class="form">
+
+    <!-- ── Basic Info ──────────────────────────────────────────────────────── -->
+    <div class="section-group">
+      <h3 class="section-title">Basic Information</h3>
+
+      <div class="row">
+        <label>
+          <span>Category *</span>
+          <select id="category" name="category" required>
+            <option value=""           selected={!initial.category}>Select…</option>
+            <option value="movie"      selected={initial.category === 'movie'}>Movie</option>
+            <option value="tv"         selected={initial.category === 'tv'}>TV Series</option>
+            <option value="book"       selected={initial.category === 'book'}>Book</option>
+            <option value="album"      selected={initial.category === 'album'}>Album</option>
+            <option value="game"       selected={initial.category === 'game'}>Game</option>
+            <option value="restaurant" selected={initial.category === 'restaurant'}>Restaurant</option>
+            <option value="product"    selected={initial.category === 'product'}>Product</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Publication Date *</span>
+          <input type="date" id="pubDate" name="pubDate" required
+                 value={initial.pubDate ?? todayIso} />
+        </label>
+      </div>
+
+      <!-- ── TMDB Integration ──────────────────────────────────────────────── -->
+      <div class="section-group" id="tmdb-section" style={isTmdbCategory ? '' : 'display:none'}>
+        <h3 class="section-title">TMDB Integration</h3>
+        <!--
+          TmdbSearch dispatches `tmdb:selected` on the document.
+          The script below listens and fills title, slug, IMDb, credits, etc.
+          Category is re-set reactively when the user changes the select.
+        -->
+        <TmdbSearch category={initial.category === 'tv' ? 'tv' : 'movie'} />
+      </div>
+
+      <div class="row">
+        <label class="grow">
+          <span>Title *</span>
+          <input type="text" id="title" name="title" required
+                 value={initial.title ?? ''}
+                 placeholder="e.g. The Matrix" />
+        </label>
+
+        <label>
+          <span>Subtitle</span>
+          <input type="text" name="subtitle"
+                 value={initial.subtitle ?? ''}
+                 placeholder="Optional" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label class="grow">
+          <span>Slug *</span>
+          <input type="text" id="slug" name="slug" required
+                 value={initial.slug ?? ''}
+                 placeholder="e.g. the-matrix-1999" />
+          <small>Auto-filled from TMDB title if left empty</small>
+        </label>
+      </div>
+    </div>
+
+    <!-- ── TV-only Fields ────────────────────────────────────────────────── -->
+    <div class="section-group" id="tv-fields" style={isTvCategory ? '' : 'display:none'}>
+      <h3 class="section-title">TV Details</h3>
+
+      <div class="row">
+        <label>
+          <span>Season</span>
+          <input type="number" name="season" min="1" value={initial.season ?? ''} />
+        </label>
+        <label>
+          <span>Episode</span>
+          <input type="number" name="episode" min="1" value={initial.episode ?? ''} />
+        </label>
+        <label>
+          <span>Total Episodes</span>
+          <input type="number" name="episodes" min="1" value={initial.episodes ?? ''} />
+        </label>
+        <label>
+          <span>Channel</span>
+          <input type="text" id="channel" name="channel"
+                 value={initial.channel ?? ''}
+                 placeholder="HBO, Netflix…" />
+        </label>
+      </div>
+    </div>
+
+    <!-- ── External IDs & Ratings ────────────────────────────────────────── -->
+    <div class="section-group">
+      <h3 class="section-title">Ratings & IDs</h3>
+
+      <div class="row">
+        <label>
+          <span>IMDb ID</span>
+          <input type="text" id="imdb-id" name="imdbId"
+                 value={initial.imdbId ?? ''}
+                 placeholder="tt1234567" />
+        </label>
+        <label>
+          <span>IMDb Rating</span>
+          <input type="number" id="imdb-rating" name="imdbRating"
+                 min="0" max="10" step="0.1"
+                 value={initial.imdbRating ?? ''} />
+        </label>
+        <label>
+          <span>Rotten Tomatoes ID</span>
+          <input type="text" name="rottenTomatoesId"
+                 value={initial.rottenTomatoesId ?? ''} />
+        </label>
+        <label>
+          <span>Rotten Tomatoes %</span>
+          <input type="number" name="rottenTomatoesRating"
+                 min="0" max="100"
+                 value={initial.rottenTomatoesRating ?? ''} />
+        </label>
+        <label>
+          <span>URL</span>
+          <input type="url" name="url"
+                 value={initial.url ?? ''}
+                 placeholder="https://…" />
+        </label>
+      </div>
+    </div>
+
+    <!-- ── Credits ───────────────────────────────────────────────────────── -->
+    <div class="section-group">
+      <h3 class="section-title">Credits</h3>
+
+      <div class="row">
+        <label class="grow">
+          <span>Writers <small>(comma-separated)</small></span>
+          <input type="text" id="writers" name="writers"
+                 value={initial.writers ?? ''}
+                 placeholder="Writer One, Writer Two" />
+        </label>
+        <label class="grow">
+          <span>Directors <small>(comma-separated)</small></span>
+          <input type="text" id="directors" name="directors"
+                 value={initial.directors ?? ''}
+                 placeholder="Director One, Director Two" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label class="grow">
+          <span>Production Companies <small>(comma-separated)</small></span>
+          <input type="text" id="production-companies" name="productionCompanies"
+                 value={initial.productionCompanies ?? ''}
+                 placeholder="Company One, Company Two" />
+        </label>
+      </div>
+    </div>
+
+    <!-- ── Cast ──────────────────────────────────────────────────────────── -->
+    <div class="section-group">
+      <h3 class="section-title">Cast</h3>
+      <!--
+        CastSelector owns the hidden `cast` input and syncs it automatically.
+        It also listens for `tmdb:selected` and pre-populates from the cast array.
+      -->
+      <CastSelector initial={initial.cast ?? []} />
+    </div>
+
+    <!-- ── Tags & Themes ─────────────────────────────────────────────────── -->
+    <div class="section-group">
+      <h3 class="section-title">Tags & Themes</h3>
+
+      <div class="row">
+        <label class="grow">
+          <span>Tags <small>(comma-separated)</small></span>
+          <input type="text" name="tags"
+                 value={initial.tags ?? ''}
+                 placeholder="sci-fi, action, drama" />
+        </label>
+        <label class="grow">
+          <span>Themes <small>(comma-separated)</small></span>
+          <input type="text" name="themes"
+                 value={initial.themes ?? ''}
+                 placeholder="identity, technology" />
+        </label>
+      </div>
+    </div>
+
+    <!-- ── Category Analysis ─────────────────────────────────────────────── -->
+    <div class="section-group">
+      <h3 class="section-title">Category Analysis</h3>
+
+      <ScoreField id="writingScore"       label="Writing"         bodyId="writingBody"
+        placeholder="Narrative logic, dialogue, character arcs, themes…"
+        initialScore={initial.writingScore}       initialBody={initial.writingBody} />
+
+      <ScoreField id="performancesScore"  label="Performances"    bodyId="performancesBody"
+        placeholder="Subtext, ensemble chemistry, casting…"
+        initialScore={initial.performancesScore}  initialBody={initial.performancesBody} />
+
+      <ScoreField id="pacingScore"        label="Pacing"          bodyId="pacingBody"
+        placeholder="Momentum, structural balance, fat-cutting…"
+        initialScore={initial.pacingScore}        initialBody={initial.pacingBody} />
+
+      <ScoreField id="productionScore"    label="Production"      bodyId="productionBody"
+        placeholder="World-building, set design, costumes…"
+        initialScore={initial.productionScore}    initialBody={initial.productionBody} />
+
+      <ScoreField id="cinematographyScore" label="Cinematography" bodyId="cinematographyBody"
+        placeholder="Composition, lighting, colour, camera movement…"
+        initialScore={initial.cinematographyScore} initialBody={initial.cinematographyBody} />
+
+      <ScoreField id="soundScore"         label="Sound"           bodyId="soundBody"
+        placeholder="Score, sound design, use of silence…"
+        initialScore={initial.soundScore}         initialBody={initial.soundBody} />
+
+      <ScoreField id="cohesionScore"      label="Cohesion"        bodyId="cohesionBody"
+        placeholder="Tonal consistency, intent vs execution…"
+        initialScore={initial.cohesionScore}      initialBody={initial.cohesionBody} />
+    </div>
+
+    <!-- ── Overall Assessment ────────────────────────────────────────────── -->
+    <div class="section-group">
+      <h3 class="section-title">Overall Assessment</h3>
+
+      <label class="grow">
+        <span>Overall notes</span>
+        <textarea name="overallAssessment" rows="6"
+                  placeholder="Overall impressions…">{initial.overallAssessment ?? ''}</textarea>
+      </label>
+
+      <label class="grow">
+        <span>Conclusion</span>
+        <textarea name="body" rows="8"
+                  placeholder="Final conclusion…">{initial.body ?? ''}</textarea>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button type="submit">Create Review</button>
+    </div>
+
+    <p id="review-create-status" class="status" aria-live="polite"></p>
+  </form>
+</FormShell>
+
+<script>
+  import { initFormShell } from '../../../utils/form/formShell.ts';
+
+  // ---------------------------------------------------------------------------
+  // Element refs
+  // ---------------------------------------------------------------------------
+
+  const form        = document.getElementById('review-create-form') as HTMLFormElement;
+  const categoryEl  = document.getElementById('category')           as HTMLSelectElement;
+  const tmdbSection = document.getElementById('tmdb-section')       as HTMLElement;
+  const tvFields    = document.getElementById('tv-fields')          as HTMLElement;
+
+  // Fields auto-filled by tmdb:selected
+  const titleEl      = document.getElementById('title')               as HTMLInputElement;
+  const slugEl       = document.getElementById('slug')                as HTMLInputElement;
+  const imdbIdEl     = document.getElementById('imdb-id')             as HTMLInputElement;
+  const imdbRatingEl = document.getElementById('imdb-rating')         as HTMLInputElement;
+  const writersEl    = document.getElementById('writers')             as HTMLInputElement;
+  const directorsEl  = document.getElementById('directors')           as HTMLInputElement;
+  const prodCoEl     = document.getElementById('production-companies') as HTMLInputElement;
+  const channelEl    = document.getElementById('channel')             as HTMLInputElement;
+
+  // ---------------------------------------------------------------------------
+  // Shell init — wires toggle, reset, and provides setStatus
+  // ---------------------------------------------------------------------------
+
+  const { setStatus } = initFormShell({
+    formId:   'review-create-form',
+    statusId: 'review-create-status',
+  });
+
+  // ---------------------------------------------------------------------------
+  // Category visibility
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Shows/hides the TMDB section and TV fields based on the selected category.
+   * Also updates TmdbSearch's `data-category` attribute so it hits the right
+   * API endpoint without a re-mount.
+   */
+  function syncCategoryVisibility(): void {
+    const cat    = categoryEl.value;
+    const isTmdb = cat === 'movie' || cat === 'tv';
+    const isTv   = cat === 'tv';
+
+    tmdbSection.style.display = isTmdb ? '' : 'none';
+    tvFields.style.display    = isTv   ? '' : 'none';
+
+    const tmdbWidget = tmdbSection.querySelector<HTMLElement>('.tmdb-search');
+    if (tmdbWidget) tmdbWidget.dataset.category = isTv ? 'tv' : 'movie';
+  }
+
+  categoryEl.addEventListener('change', syncCategoryVisibility);
+
+  // ---------------------------------------------------------------------------
+  // tmdb:selected — auto-fill form fields
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Fills empty form fields with data from the TMDB search result.
+   * Only fills fields the user hasn't already typed into.
+   */
+  document.addEventListener('tmdb:selected', (e: Event) => {
+    const d = (e as CustomEvent).detail as {
+      tmdbId:              number;
+      title:               string;
+      year:                string;
+      imdbId:              string;
+      imdbRating:          string;
+      writers:             string;
+      directors:           string;
+      productionCompanies: string;
+      channel:             string;
+    };
+
+    if (!titleEl.value      && d.title)               titleEl.value      = d.title;
+    if (!imdbIdEl.value     && d.imdbId)              imdbIdEl.value     = d.imdbId;
+    if (!imdbRatingEl.value && d.imdbRating)          imdbRatingEl.value = d.imdbRating;
+    if (!writersEl.value    && d.writers)             writersEl.value    = d.writers;
+    if (!directorsEl.value  && d.directors)           directorsEl.value  = d.directors;
+    if (!prodCoEl.value     && d.productionCompanies) prodCoEl.value     = d.productionCompanies;
+    if (!channelEl.value    && d.channel)             channelEl.value    = d.channel;
+
+    // Auto-generate slug from title if the slug field is still empty
+    if (!slugEl.value && d.title) {
+      slugEl.value = d.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+    }
+  });
+
+  /**
+   * Clears auto-filled fields when the user clears the TMDB search.
+   */
+  document.addEventListener('tmdb:cleared', () => {
+    [titleEl, slugEl, imdbIdEl, imdbRatingEl, writersEl, directorsEl, prodCoEl, channelEl]
+      .forEach((el) => { if (el) el.value = ''; });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Submit
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Collects FormData, builds the typed payload, and calls the `createReview`
+   * Astro action. Reloads the page on success.
+   */
+  form.addEventListener('submit', async (e: SubmitEvent): Promise<void> => {
+    e.preventDefault();
+    setStatus('Saving…');
+
+    try {
+      const fd      = new FormData(form);
+      const rawData = Object.fromEntries(fd.entries());
+
+      /**
+       * Splits a comma-separated string into a trimmed, non-empty string array.
+       * @param val - The raw FormData value.
+       */
+      function splitComma(val: unknown): string[] | undefined {
+        if (!val || typeof val !== 'string') return undefined;
+        const arr = val.split(',').map((s) => s.trim()).filter(Boolean);
+        return arr.length ? arr : undefined;
+      }
+
+      /**
+       * Parses a float from a FormData string value.
+       * @param val - The raw FormData value.
+       */
+      function parseFloat_(val: unknown): number | undefined {
+        if (!val || typeof val !== 'string') return undefined;
+        const n = parseFloat(val);
+        return isNaN(n) ? undefined : n;
+      }
+
+      /**
+       * Parses an integer from a FormData string value.
+       * @param val - The raw FormData value.
+       */
+      function parseInt_(val: unknown): number | undefined {
+        if (!val || typeof val !== 'string') return undefined;
+        const n = parseInt(val, 10);
+        return isNaN(n) ? undefined : n;
+      }
+
+      const validCategories = ['movie', 'tv', 'album', 'book', 'game', 'restaurant', 'product'] as const;
+      const category = rawData.category as string;
+      const validatedCategory = validCategories.includes(category as any)
+        ? (category as 'movie' | 'tv' | 'album' | 'book' | 'game' | 'restaurant' | 'product')
+        : 'movie';
+
+      const payload = {
+        slug:     rawData.slug     as string,
+        title:    rawData.title    as string,
+        category: validatedCategory,
+        pubDate:  rawData.pubDate  as string,
+
+        subtitle:             typeof rawData.subtitle             === 'string' ? rawData.subtitle             : undefined,
+        url:                  (typeof rawData.url === 'string' && rawData.url.trim()) ? rawData.url           : undefined,
+        imdbId:               typeof rawData.imdbId              === 'string' ? rawData.imdbId               : undefined,
+        rottenTomatoesId:     typeof rawData.rottenTomatoesId    === 'string' ? rawData.rottenTomatoesId     : undefined,
+        channel:              typeof rawData.channel             === 'string' ? rawData.channel              : undefined,
+        overallAssessment:    typeof rawData.overallAssessment   === 'string' ? rawData.overallAssessment    : undefined,
+        body:                 typeof rawData.body                === 'string' ? rawData.body                 : undefined,
+
+        writingBody:          typeof rawData.writingBody         === 'string' ? rawData.writingBody          : undefined,
+        cohesionBody:         typeof rawData.cohesionBody        === 'string' ? rawData.cohesionBody         : undefined,
+        performancesBody:     typeof rawData.performancesBody    === 'string' ? rawData.performancesBody     : undefined,
+        pacingBody:           typeof rawData.pacingBody          === 'string' ? rawData.pacingBody           : undefined,
+        productionBody:       typeof rawData.productionBody      === 'string' ? rawData.productionBody       : undefined,
+        cinematographyBody:   typeof rawData.cinematographyBody  === 'string' ? rawData.cinematographyBody   : undefined,
+        soundBody:            typeof rawData.soundBody           === 'string' ? rawData.soundBody            : undefined,
+
+        imdbRating:           parseFloat_(rawData.imdbRating),
+        rottenTomatoesRating: parseInt_(rawData.rottenTomatoesRating),
+        tmdbId:               parseInt_(rawData.tmdbId),
+        season:               parseInt_(rawData.season),
+        episode:              parseInt_(rawData.episode),
+        episodes:             parseInt_(rawData.episodes),
+
+        writingScore:         parseFloat_(rawData.writingScore),
+        cohesionScore:        parseFloat_(rawData.cohesionScore),
+        performancesScore:    parseFloat_(rawData.performancesScore),
+        pacingScore:          parseFloat_(rawData.pacingScore),
+        productionScore:      parseFloat_(rawData.productionScore),
+        cinematographyScore:  parseFloat_(rawData.cinematographyScore),
+        soundScore:           parseFloat_(rawData.soundScore),
+
+        writers:             splitComma(rawData.writers),
+        directors:           splitComma(rawData.directors),
+        productionCompanies: splitComma(rawData.productionCompanies),
+        tags:                splitComma(rawData.tags),
+        themes:              splitComma(rawData.themes),
+
+        cast: rawData.cast
+          ? (rawData.cast as string).split(',').filter(Boolean)
+          : undefined,
+      };
+
+      console.log('[ReviewCreateForm] Submitting payload:', payload);
+
+      const { actions } = await import('astro:actions');
+      const { data, error } = await actions.createReview(payload);
+
+      if (error) {
+        setStatus(`Error: ${error.message}`, 'error');
+      } else if (data?.success) {
+        setStatus(`Saved ${data.id}`, 'ok');
+        setTimeout(() => window.location.reload(), 800);
+      }
+    } catch (err) {
+      setStatus('Unexpected error — check the console.', 'error');
+      console.error('[ReviewCreateForm] submit error:', err);
+    }
+  });
+</script>

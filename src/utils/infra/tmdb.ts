@@ -182,3 +182,35 @@ export function getPosterUrl(path: string | null): string | null {
 	if (!path) return null;
 	return `https://image.tmdb.org/t/p/w500${path}`;
 }
+
+/**
+ * Fetch external IDs for a TMDB item (including IMDb ID)
+ */
+export async function getExternalIds(
+  id: number,
+  type: TMDBMediaType
+): Promise<{ imdb_id: string | null }> {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    console.warn('[TMDB] No API key available for external IDs');
+    return { imdb_id: null };
+  }
+
+  const url = `${BASE_URL}/${type}/${id}/external_ids?api_key=${apiKey}`;
+
+  try {
+    console.debug('[TMDB] Fetching external IDs', { id, type });
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      console.warn('[TMDB] Failed to fetch external IDs:', res.status);
+      return { imdb_id: null };
+    }
+
+    const data = await res.json();
+    return { imdb_id: data.imdb_id || null };
+  } catch (err) {
+    console.error('[TMDB] Error fetching external IDs:', err);
+    return { imdb_id: null };
+  }
+}

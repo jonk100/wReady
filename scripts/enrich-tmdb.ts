@@ -13,6 +13,10 @@ import {
 	getTMDBItem,
 } from '../src/utils/tmdb.ts';
 
+import { getExternalIds } from '../src/utils/infra/tmdb';
+
+import { getImdbRating } from '../src/utils/infra/omdb';
+
 import { getCached, setCached } from './utils/cache';
 import { downloadImage } from './utils/download';
 import { createSlug } from './utils/slug';
@@ -58,8 +62,8 @@ async function run() {
 		const parsed = matter(raw);
 		const data = parsed.data;
 
-		// Skip if already fully enriched
-		if (data.tmdbId && data.poster) continue;
+		// Skip if already fully enriched (check for new fields)
+		if (data.tmdbId && data.poster && data.imdbId && data.imdbRating && data.tmdbRating) continue;
 		if (!['movie', 'tv'].includes(data.category)) continue;
 
 		const cacheKey = `${data.category}:${data.title}`;
@@ -108,15 +112,70 @@ async function run() {
 			? await fetchCast(match.id, data.category, API_KEY)
 			: [];
 
+		// ✅ EXTERNAL IDs (for IMDb)
+		let imdbId = data.imdbId;
+		if (!imdbId) {
+			const externalIds = await getExternalIds(match.id, data.category);
+			if (externalIds.imdb_id) {
+				imdbId = externalIds.imdb_id;
+				console.log('[IMDb] Found IMDb ID:', imdbId);
+			}
+		}
+
+		// ✅ IMDb RATING
+		let imdbRating = data.imdbRating;
+		if (imdbId && !imdbRating) {
+			const rating = await getImdbRating(imdbId);
+			if (rating) {
+				imdbRating = rating;
+				console.log('[IMDb] Fetched rating:', rating);
+			}
+		}
+
+		// ✅ WRITERS (TV shows)
+		let writers = data.writers;
+		if (!writers && match.created_by && match.created_by.length > 0) {
+			writers = match.created_by.map((w: any) => w.name);
+		}
+
+		// ✅ DIRECTORS (movies)
+		let directors = data.directors;
+		if (!directors && data.category === 'movie' && match.credits?.crew) {
+			const crewDirectors = match.credits.crew
+				.filter((c: any) => c.job === 'Director')
+				.map((d: any) => d.name);
+			if (crewDirectors.length > 0) {
+				directors = crewDirectors;
+			}
+		}
+
+		// ✅ PRODUCTION COMPANIES
+		let productionCompanies = data.productionCompanies;
+		if (!productionCompanies && match.production_companies && match.production_companies.length > 0) {
+			productionCompanies = match.production_companies.map((pc: any) => pc.name);
+		}
+
+		// ✅ CHANNEL (TV shows)
+		let channel = data.channel;
+		if (!channel && data.category === 'tv' && match.networks && match.networks.length > 0) {
+			channel = normalizeChannel(match.networks[0].name);
+		}
+
 		const updated = {
 			...data,
 			tmdbId: match.id,
 			tmdbType: data.category,
 			tmdbSlug: slug,
+			tmdbRating: data.tmdbRating ?? match.vote_average,
 			poster: localPoster,
 			year: data.year ?? (match.release_date || match.first_air_date || '').slice(0, 4),
 			overview: data.overview ?? match.overview?.slice(0, 450) + '...',
-			channel: normalizeChannel(data.channel),
+			channel: channel ?? normalizeChannel(data.channel),
+			imdbId,
+			imdbRating,
+			writers,
+			directors,
+			productionCompanies,
 			castDetailed: cast.map(c => ({
 				id: c.id,
 				name: c.name,
@@ -124,7 +183,12 @@ async function run() {
 			}))
 		};
 
-		await fs.writeFile(file, matter.stringify(parsed.content, updated));
+		// Filter out undefined values to avoid YAML serialization errors
+		const cleaned = Object.fromEntries(
+			Object.entries(updated).filter(([, value]) => value !== undefined)
+		);
+
+		await fs.writeFile(file, matter.stringify(parsed.content, cleaned));
 	}
 }
 

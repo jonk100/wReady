@@ -115,11 +115,11 @@ const chords = defineCollection({
     fingering: z.array(z.coerce.number()),
     frets: z.array(z.coerce.number()),
     
-    // Change tuple to array to stop "exactly 2 items" failures
+    // Barre must have exactly 2 string indices (start and end)
     barre: z.object({
       finger: z.coerce.number(),
       fret: z.coerce.number(),
-      strings: z.array(z.coerce.number()), 
+      strings: z.tuple([z.coerce.number(), z.coerce.number()]),
     }).optional(),
 
     notes: z.array(z.coerce.string()).optional(), // Coerce to string to handle unquoted YAML
@@ -563,8 +563,21 @@ const reviews = defineCollection({
         url: z.string().url().optional(),
         imdbId: optionalString,
         imdbRating: z.number().min(0).max(10).optional(),
+        tmdbRating: z.number().min(0).max(100).optional(),
         rottenTomatoesId: optionalString,
         rottenTomatoesRating: z.number().min(0).max(100).optional(),
+
+        // --- Category scores (1-10 scale) ---
+        writingScore: z.number().min(1).max(10).optional(),
+        cohesionScore: z.number().min(1).max(10).optional(),
+        performancesScore: z.number().min(1).max(10).optional(),
+        pacingScore: z.number().min(1).max(10).optional(),
+        productionScore: z.number().min(1).max(10).optional(),
+        cinematographyScore: z.number().min(1).max(10).optional(),
+        soundScore: z.number().min(1).max(10).optional(),
+
+        // --- Final calculated score ---
+        finalScore: z.number().min(1).max(10).optional(),
 
         // --- Credits ---
         /**
@@ -608,10 +621,6 @@ const reviews = defineCollection({
       .refine((d) => d.category !== "tv" || d.tmdbType === "tv", {
         message: "TV must use tmdbType 'tv'",
         path: ["tmdbType"],
-      })
-      .refine((d) => d.category !== "tv" || d.season !== undefined, {
-        message: "TV reviews require a season",
-        path: ["season"],
       }),
 });
 

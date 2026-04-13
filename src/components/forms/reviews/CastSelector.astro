@@ -1,0 +1,383 @@
+---
+/**
+ * CastSelector.astro
+ *
+ * Self-contained cast member search and selection widget.
+ *
+ * Usage:
+ *   <CastSelector />
+ *   <CastSelector initial={['timothe-chalamet', 'gwyneth-paltrow']} />
+ *
+ * Renders a search input that queries the `searchActors` action, displays
+ * results as a dropdown, and tracks selections as removable tags. The
+ * chosen member IDs (TMDB IDs or existing slugs) are kept in a hidden
+ * input named `cast` so FormData picks them up automatically on submit.
+ *
+ * Also listens for the `tmdb:selected` CustomEvent from TmdbSearch so that
+ * cast members fetched as part of a TMDB result are pre-populated here.
+ *
+ * Dispatches `cast:updated` on the document whenever the selection changes:
+ *   detail: { ids: string[] }
+ */
+
+export type Props = {
+  /** Pre-selected cast member IDs (slugs or TMDB numeric IDs as strings). */
+  initial?: string[];
+};
+
+const { initial = [] } = Astro.props;
+---
+
+<div class="cast-selector">
+  <div class="cast-search-row">
+    <input
+      type="text"
+      class="cast-query"
+      placeholder="Search for actors…"
+      autocomplete="off"
+    />
+    <button type="button" class="cast-search-btn">Search</button>
+  </div>
+
+  <ul class="cast-results" hidden aria-label="Actor search results"></ul>
+
+  <div class="cast-tags" aria-label="Selected cast members"></div>
+
+  <!-- Consumed by FormData on submit; value is comma-separated IDs -->
+  <input
+    type="hidden"
+    name="cast"
+    class="cast-hidden"
+    value={initial.join(',')}
+  />
+</div>
+
+<script>
+  /** Represents a selected cast member before the file is written to disk. */
+  type CastMember = {
+    /** TMDB numeric ID (as string) or existing actor slug. */
+    id: string;
+    /** Display name shown in the tag. */
+    name: string;
+    /** Character name, if known from TMDB. */
+    character?: string;
+  };
+
+  document.querySelectorAll<HTMLElement>('.cast-selector').forEach((root) => {
+    const queryInput  = root.querySelector<HTMLInputElement>('.cast-query')!;
+    const searchBtn   = root.querySelector<HTMLButtonElement>('.cast-search-btn')!;
+    const resultsList = root.querySelector<HTMLUListElement>('.cast-results')!;
+    const tagsEl      = root.querySelector<HTMLDivElement>('.cast-tags')!;
+    const hiddenInput = root.querySelector<HTMLInputElement>('.cast-hidden')!;
+
+    /** Currently selected cast members. */
+    let selected: CastMember[] = hiddenInput.value
+      ? hiddenInput.value.split(',').filter(Boolean).map((id) => ({ id, name: id }))
+      : [];
+
+    // ── Search ────────────────────────────────────────────────────────────────
+
+    /**
+     * Queries the searchActors action and renders the result list.
+     */
+    async function runSearch(): Promise<void> {
+      const query = queryInput.value.trim();
+      if (!query) return;
+
+      searchBtn.textContent = '…';
+      searchBtn.disabled = true;
+
+      try {
+        const res  = await fetch('/_actions/searchActors', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ query }),
+        });
+
+        const raw = await res.text();
+
+        let results: any[] = [];
+        try {
+          const parsed = JSON.parse(raw);
+          const first  = Array.isArray(parsed) ? parsed[0] : parsed;
+          results = typeof first === 'string' ? JSON.parse(first) : (first ?? []);
+        } catch {
+          results = [];
+        }
+
+        renderResults(results);
+      } catch (err) {
+        console.error('[CastSelector] fetch error', err);
+        renderResults([]);
+      } finally {
+        searchBtn.textContent = 'Search';
+        searchBtn.disabled = false;
+      }
+    }
+
+    // ── Render results ────────────────────────────────────────────────────────
+
+    /**
+     * Renders actor search results as a clickable list.
+     * @param {any[]} results - Raw actor objects from the searchActors action.
+     */
+    function renderResults(results: any[]): void {
+      resultsList.innerHTML = '';
+
+      if (results.length === 0) {
+        resultsList.innerHTML = '<li class="cast-empty">No actors found.</li>';
+        resultsList.hidden = false;
+        return;
+      }
+
+      results.forEach((actor) => {
+        const alreadySelected = selected.some((m) => m.id === String(actor.id));
+
+        const li = document.createElement('li');
+        li.className = `cast-result-item${actor.exists ? ' exists' : ''}${alreadySelected ? ' picked' : ''}`;
+        li.innerHTML = `
+          <strong>${actor.name}</strong>
+          ${actor.exists   ? '<span class="badge">in collection</span>' : ''}
+          ${alreadySelected ? '<span class="badge picked-badge">selected</span>' : ''}
+          ${actor.known_for ? `<span class="cast-known">${actor.known_for}</span>` : ''}
+        `;
+
+        if (!alreadySelected) {
+          li.addEventListener('click', () => {
+            addMember({ id: String(actor.id), name: actor.name });
+            resultsList.hidden = true;
+            queryInput.value = '';
+          });
+        }
+
+        resultsList.appendChild(li);
+      });
+
+      resultsList.hidden = false;
+    }
+
+    // ── Selection management ──────────────────────────────────────────────────
+
+    /**
+     * Adds a cast member to the selection if not already present.
+     * @param {CastMember} member - The member to add.
+     */
+    function addMember(member: CastMember): void {
+      if (selected.some((m) => m.id === member.id)) return;
+      selected.push(member);
+      commit();
+    }
+
+    /**
+     * Removes a cast member from the selection by ID.
+     * @param {string} id - The member ID to remove.
+     */
+    function removeMember(id: string): void {
+      selected = selected.filter((m) => m.id !== id);
+      commit();
+    }
+
+    /**
+     * Syncs the hidden input value, re-renders the tags, and dispatches
+     * `cast:updated` so the parent can react if needed.
+     */
+    function commit(): void {
+      hiddenInput.value = selected.map((m) => m.id).join(',');
+      renderTags();
+      document.dispatchEvent(new CustomEvent('cast:updated', {
+        bubbles: true,
+        detail: { ids: selected.map((m) => m.id) },
+      }));
+    }
+
+    // ── Render tags ───────────────────────────────────────────────────────────
+
+    /**
+     * Re-renders the selected cast as removable tags.
+     */
+    function renderTags(): void {
+      tagsEl.innerHTML = selected.length === 0
+        ? '<span class="cast-placeholder">No cast selected</span>'
+        : selected.map((m) => `
+            <span class="cast-tag">
+              ${m.name}
+              <button
+                type="button"
+                class="cast-remove"
+                data-id="${m.id}"
+                aria-label="Remove ${m.name}"
+              >×</button>
+            </span>
+          `).join('');
+
+      // Wire remove buttons
+      tagsEl.querySelectorAll<HTMLButtonElement>('.cast-remove').forEach((btn) => {
+        btn.addEventListener('click', () => removeMember(btn.dataset.id!));
+      });
+    }
+
+    // ── tmdb:selected integration ─────────────────────────────────────────────
+
+    /**
+     * When TmdbSearch selects a result, pre-populate the cast from its
+     * `cast` array (top 3 from TMDB). Existing selections are preserved.
+     */
+    document.addEventListener('tmdb:selected', (e: Event) => {
+      const { cast } = (e as CustomEvent).detail as {
+        cast: Array<{ id: number; name: string; character: string }>;
+      };
+
+      if (!Array.isArray(cast)) return;
+
+      cast.forEach((member) => {
+        addMember({
+          id:        String(member.id),
+          name:      member.name,
+          character: member.character,
+        });
+      });
+    });
+
+    /** Clear cast when TmdbSearch is cleared. */
+    document.addEventListener('tmdb:cleared', () => {
+      selected = [];
+      commit();
+    });
+
+    // ── Listeners ─────────────────────────────────────────────────────────────
+
+    searchBtn.addEventListener('click', runSearch);
+
+    queryInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        runSearch();
+      }
+    });
+
+    // Hide results when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!root.contains(e.target as Node)) {
+        resultsList.hidden = true;
+      }
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
+    // Render initial tags if pre-populated via props
+    renderTags();
+  });
+</script>
+
+<style>
+  .cast-selector {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .cast-search-row {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .cast-search-row input { flex: 1; }
+
+  .cast-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-raised);
+  }
+
+  .cast-result-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background var(--transition-fast);
+    font-size: var(--text-sm);
+  }
+
+  .cast-result-item:last-child { border-bottom: none; }
+  .cast-result-item:hover { background: var(--bg-card-hover); }
+  .cast-result-item.picked { opacity: 0.5; cursor: default; }
+  .cast-result-item.exists { background: var(--accent-subtle); }
+
+  .cast-empty {
+    padding: var(--space-3) var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: var(--text-xs);
+    padding: 0.1em 0.5em;
+    border-radius: var(--radius-sm);
+    background: var(--border);
+    color: var(--text-secondary);
+    margin-left: var(--space-1);
+  }
+
+  .picked-badge { background: var(--accent-dim); color: #fff; }
+
+  .cast-known {
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+  }
+
+  .cast-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    min-height: 38px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-raised);
+    align-items: center;
+  }
+
+  .cast-placeholder {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .cast-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0.25em 0.6em;
+    background: var(--accent-subtle);
+    border: 1px solid var(--accent-dim);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+  }
+
+  .cast-character {
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    margin-left: var(--space-1);
+  }
+
+  .cast-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--text-base);
+    padding: 0 0 0 var(--space-1);
+    line-height: 1;
+    transition: color var(--transition-fast);
+  }
+
+  .cast-remove:hover { color: var(--text-primary); }
+</style>

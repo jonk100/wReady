@@ -38,6 +38,10 @@ if (data.category && data.year) {
   meta.push(String(data.year));
 }
 
+if (data.finalScore) {
+  meta.push(`${data.finalScore}/10`);
+}
+
 if (data.imdbRating) {
   meta.push(`${data.imdbRating}/10`);
 }

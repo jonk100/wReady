@@ -35,12 +35,13 @@ function formatDate(date: Date): string {
 }
 
 /**
- * Derives a display name from an actor's slug.
+ * Derives a display name from an actor's slug or reference object.
  * e.g. "michael-dorman" → "Michael Dorman"
- * @param {string} slug - The actor's content collection ID.
+ * @param {string | { id: string }} slugOrRef - The actor's content collection ID or reference object.
  * @returns {string} Title-cased display name.
  */
-function formatActorName(slug: string): string {
+function formatActorName(slugOrRef: string | { id: string }): string {
+  const slug = typeof slugOrRef === 'string' ? slugOrRef : slugOrRef.id;
   return slug
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -83,6 +84,18 @@ const topActors = data.cast?.slice(0, 3) ?? [];
       )}
 
       <div class="review-ratings">
+        {data.finalScore && (
+          <div class="rating">
+            <span class="rating-label">Score</span>
+            <span class="rating-value">{data.finalScore}/10</span>
+          </div>
+        )}
+        {data.tmdbRating && (
+          <div class="rating">
+            <span class="rating-label">TMDB</span>
+            <span class="rating-value">{data.tmdbRating.toFixed(1)}/10</span>
+          </div>
+        )}
         {data.imdbRating && (
           <div class="rating">
             <span class="rating-label">IMDb</span>
@@ -108,17 +121,68 @@ const topActors = data.cast?.slice(0, 3) ?? [];
       </div>
     )}
 
-        {topActors.length > 0 && (
+    {data.overview && (
+      <section class="overview-section">
+        <h2>Overview</h2>
+        <p class="overview">{data.overview}</p>
+      </section>
+    )}
+
+    {data.cast && data.cast.length > 0 && (
       <section class="cast-section">
         <h2>Cast</h2>
         <div class="cast-grid">
-          {topActors.map((actor) => (
-            <a href={`/actors/${actor.id}`} class="cast-card">
-              <div class="cast-info">
-                <h3>{formatActorName(actor.id)}</h3>
-              </div>
-            </a>
-          ))}
+          {data.cast.map((actorRef: any, index: number) => {
+            // Handle both string slugs and reference objects
+            const actorSlug = typeof actorRef === 'string' ? actorRef : actorRef.id;
+            // Try to get character info from castDetailed if available
+            const castDetail = data.castDetailed?.[index];
+            return (
+              <a href={`/actors/${actorSlug}`} class="cast-card">
+                <div class="cast-info">
+                  <h3>{formatActorName(actorSlug)}</h3>
+                  {castDetail?.character && <p class="character">{castDetail.character}</p>}
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      </section>
+    )}
+
+    {(data.writers || data.directors || data.productionCompanies) && (
+      <section class="credits-section">
+        <h2>Credits</h2>
+        <div class="credits-grid">
+          {data.writers && data.writers.length > 0 && (
+            <div class="credit-item">
+              <span class="credit-label">Writers</span>
+              <span class="credit-value">{data.writers.join(', ')}</span>
+            </div>
+          )}
+          {data.directors && data.directors.length > 0 && (
+            <div class="credit-item">
+              <span class="credit-label">Directors</span>
+              <span class="credit-value">{data.directors.join(', ')}</span>
+            </div>
+          )}
+          {data.productionCompanies && data.productionCompanies.length > 0 && (
+            <div class="credit-item">
+              <span class="credit-label">Production</span>
+              <span class="credit-value">{data.productionCompanies.join(', ')}</span>
+            </div>
+          )}
+        </div>
+      </section>
+    )}
+
+    {(data.season || data.episode || data.episodes) && (
+      <section class="tv-section">
+        <h2>Season & Episode Info</h2>
+        <div class="tv-info">
+          {data.season && <span>Season {data.season}</span>}
+          {data.episode && <span>Episode {data.episode}</span>}
+          {data.episodes && <span>{data.episodes} episodes total</span>}
         </div>
       </section>
     )}
@@ -127,8 +191,19 @@ const topActors = data.cast?.slice(0, 3) ?? [];
       <section class="tags-section">
         <h2>Tags</h2>
         <div class="tags">
-          {data.tags.map((tag) => (
+          {data.tags.map((tag: string) => (
             <span class="tag">{tag}</span>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {data.themes && data.themes.length > 0 && (
+      <section class="themes-section">
+        <h2>Themes</h2>
+        <div class="tags">
+          {data.themes.map((theme: { id: string }) => (
+            <span class="tag theme-tag">{formatActorName(theme.id)}</span>
           ))}
         </div>
       </section>
@@ -140,9 +215,32 @@ const topActors = data.cast?.slice(0, 3) ?? [];
       </div>
     </div>
 
-    {data.url && (
+    <style is:global>
+      .content-body h1,
+      .content-body h2,
+      .content-body h3,
+      .content-body h4,
+      .content-body h5,
+      .content-body h6 {
+        margin: 2rem 0 0.25rem 0 !important;
+      }
+
+      .content-body h2 {
+        font-size: 1.5rem;
+      }
+
+      .content-body h3 {
+        font-size: 1.25rem;
+      }
+
+      .content-body p {
+        margin: 0 0 2rem 0 !important;
+      }
+    </style>
+
+    {(data.imdbId || data.url) && (
       <footer class="review-footer">
-        <a href={data.url} class="external-link" target="_blank" rel="noopener noreferrer">
+        <a href={data.imdbId ? `https://www.imdb.com/title/${data.imdbId}/` : data.url} class="external-link" target="_blank" rel="noopener noreferrer">
           View on IMDb
         </a>
       </footer>
@@ -270,14 +368,13 @@ const topActors = data.cast?.slice(0, 3) ?? [];
     color: var(--text-secondary);
   }
 
-  .content-body :is(h1, h2, h3, h4, h5, h6) {
-    color: var(--text-primary);
-    margin-top: var(--space-6);
-    margin-bottom: var(--space-3);
-  }
-
-  .content-body p {
-    margin-bottom: var(--space-4);
+  /*
+   * The MDX body often opens with a redundant h1 matching data.title,
+   * which is already rendered in the <header>. Hide it so it doesn't
+   * appear twice on the page.
+   */
+  .content-body > h1:first-child {
+    display: none;
   }
 
   .cast-section {
@@ -315,6 +412,102 @@ const topActors = data.cast?.slice(0, 3) ?? [];
     font-size: var(--text-base);
     margin: 0;
     color: var(--text-primary);
+  }
+
+  .cast-info .character {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin: var(--space-1) 0 0 0;
+  }
+
+  .overview-section {
+    margin-bottom: var(--space-8);
+  }
+
+  .overview-section h2 {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--space-4);
+    color: var(--text-primary);
+  }
+
+  .overview {
+    font-size: var(--text-lg);
+    line-height: 1.7;
+    color: var(--text-secondary);
+  }
+
+  .credits-section {
+    margin-bottom: var(--space-8);
+  }
+
+  .credits-section h2 {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--space-4);
+    color: var(--text-primary);
+  }
+
+  .credits-grid {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .credit-item {
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+  }
+
+  .credit-label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--accent);
+    min-width: 100px;
+  }
+
+  .credit-value {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+
+  .tv-section {
+    margin-bottom: var(--space-8);
+  }
+
+  .tv-section h2 {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--space-4);
+    color: var(--text-primary);
+  }
+
+  .tv-info {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+
+  .tv-info span {
+    padding: 0.3em 0.8em;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+  }
+
+  .themes-section {
+    margin-bottom: var(--space-8);
+  }
+
+  .themes-section h2 {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--space-4);
+    color: var(--text-primary);
+  }
+
+  .theme-tag {
+    background: var(--accent);
+    color: white;
   }
 
   .tags-section {

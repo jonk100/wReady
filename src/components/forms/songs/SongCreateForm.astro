@@ -1,0 +1,427 @@
+---
+/**
+ * SongCreateForm.astro
+ *
+ * Form for creating a new song entry.
+ *
+ * Shell chrome (reset button, amber summary bar, collapsible details, toggle
+ * chevron) is handled by `FormShell.astro`. Toggle/reset JS and the
+ * `setStatus` helper are provided by `initFormShell` from
+ * `src/utils/formShell.ts`.
+ *
+ * Sub-components:
+ *   - ChordVoicingSelector — dispatches `chord-voicings-change` (bubbles: true)
+ *   - SectionManager       — dispatches `section-manager-change` (bubbles: true)
+ */
+
+import FormShell          from '../FormShell.astro';
+import ChordVoicingSelector from './ChordVoicingSelector.astro';
+import SectionManager       from './SectionManager.astro';
+
+export type Props = {
+  /** Optional prefill values — useful for edit flows or defaults. */
+  initial?: {
+    slug?:                string;
+    title?:               string;
+    keyRoot?:             string;
+    keyMode?:             string;
+    tempo?:               string;
+    timeSignatureTop?:    string;
+    timeSignatureBottom?: string;
+    chordVoicings?:       string;
+    structure?:           string;
+    sections?:            string;
+    album?:               string;
+    chordSheetUrl?:       string;
+    status?:              string;
+    themes?:              string;
+    body?:                string;
+  };
+};
+
+const { initial } = Astro.props as Props;
+
+const initialSlug                = initial?.slug                ?? '';
+const initialTitle               = initial?.title               ?? '';
+const initialKeyRoot             = initial?.keyRoot             ?? 'C';
+const initialKeyMode             = initial?.keyMode             ?? 'major';
+const initialTempo               = initial?.tempo               ?? 120;
+const initialTimeSignatureTop    = initial?.timeSignatureTop    ?? 4;
+const initialTimeSignatureBottom = initial?.timeSignatureBottom ?? 4;
+
+const initialChordVoicings = JSON.stringify(initial?.chordVoicings ?? []);
+const initialStructure     = JSON.stringify(initial?.structure ?? []);
+const initialSections      = JSON.stringify(initial?.sections ?? [
+  { name: 'verse', chords: ['C', 'G', 'Am', 'F'], bars: 8, repeats: 1 },
+]);
+
+const initialAlbum         = initial?.album         ?? '';
+const initialChordSheetUrl = initial?.chordSheetUrl ?? '';
+const initialStatus        = initial?.status        ?? 'idea';
+const initialThemes        = JSON.stringify(initial?.themes ?? []);
+const initialBody          = initial?.body          ?? '';
+---
+
+<FormShell label="Add a new song" showToggle>
+  <form id="song-create-form" class="form">
+
+    <!-- ── Basic Info ──────────────────────────────────────────────────────── -->
+    <div class="section-group">
+      <h3 class="section-title">Basic Information</h3>
+
+      <div class="row">
+        <label>
+          <span>Title</span>
+          <input name="title" type="text" required
+                 value={initialTitle} placeholder="Song title" />
+        </label>
+
+        <label>
+          <span>Key Root</span>
+          <select name="keyRoot" required>
+            <option value="C"  selected={initialKeyRoot === 'C'}>C</option>
+            <option value="C#" selected={initialKeyRoot === 'C#'}>C#</option>
+            <option value="D"  selected={initialKeyRoot === 'D'}>D</option>
+            <option value="D#" selected={initialKeyRoot === 'D#'}>D#</option>
+            <option value="E"  selected={initialKeyRoot === 'E'}>E</option>
+            <option value="F"  selected={initialKeyRoot === 'F'}>F</option>
+            <option value="F#" selected={initialKeyRoot === 'F#'}>F#</option>
+            <option value="G"  selected={initialKeyRoot === 'G'}>G</option>
+            <option value="G#" selected={initialKeyRoot === 'G#'}>G#</option>
+            <option value="A"  selected={initialKeyRoot === 'A'}>A</option>
+            <option value="A#" selected={initialKeyRoot === 'A#'}>A#</option>
+            <option value="B"  selected={initialKeyRoot === 'B'}>B</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Key Mode</span>
+          <select name="keyMode" required>
+            <option value="major"      selected={initialKeyMode === 'major'}>Major</option>
+            <option value="minor"      selected={initialKeyMode === 'minor'}>Minor</option>
+            <option value="dorian"     selected={initialKeyMode === 'dorian'}>Dorian</option>
+            <option value="phrygian"   selected={initialKeyMode === 'phrygian'}>Phrygian</option>
+            <option value="lydian"     selected={initialKeyMode === 'lydian'}>Lydian</option>
+            <option value="mixolydian" selected={initialKeyMode === 'mixolydian'}>Mixolydian</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="row">
+        <label>
+          <span>Tempo (BPM)</span>
+          <input name="tempo" type="number" min="60" max="200"
+                 value={String(initialTempo)} />
+        </label>
+
+        <label>
+          <span>Time Signature</span>
+          <div class="time-sig">
+            <input name="timeSignatureTop"    type="number" min="1" max="16" required
+                   value={String(initialTimeSignatureTop)} />
+            <span>/</span>
+            <input name="timeSignatureBottom" type="number" min="1" max="16" required
+                   value={String(initialTimeSignatureBottom)} />
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- ── Song Structure ──────────────────────────────────────────────────── -->
+    <div class="section-group">
+      <h3 class="section-title">Song Structure</h3>
+
+      <SectionManager
+        initialSections={JSON.parse(initial?.sections || '[]')}
+        initialStructure={JSON.parse(initial?.structure || '[]')}
+      />
+
+      <!--
+        Hidden inputs owned by the form, written by the section-manager-change
+        listener in the script below.
+      -->
+      <input name="structure" type="hidden" value={initialStructure} />
+      <input name="sections"  type="hidden" value={initialSections} />
+    </div>
+
+    <!-- ── Chord Voicings ──────────────────────────────────────────────────── -->
+    <div class="section-group">
+      <h3 class="section-title">Chord Voicings</h3>
+
+      <div class="row">
+        <label class="grow">
+          <span>Chord Voicings</span>
+          <!--
+            ChordVoicingSelector manages its own search/display state and
+            dispatches 'chord-voicings-change' (bubbles: true) whenever the
+            selection changes. The script below writes the slug array into the
+            hidden input so FormData picks it up on submit.
+
+            data-key-root is kept in sync with the Key Root <select> so chord
+            colours update reactively without re-mounting the component.
+          -->
+          <ChordVoicingSelector
+            initialVoicings={JSON.parse(initialChordVoicings)}
+            keyRoot={initialKeyRoot}
+          />
+          <input
+            name="chordVoicings"
+            type="hidden"
+            id="chord-voicings-hidden"
+            value={initialChordVoicings}
+          />
+          <small>Type to search chords from your collection, click to select</small>
+        </label>
+      </div>
+    </div>
+
+    <!-- ── Optional Fields ─────────────────────────────────────────────────── -->
+    <div class="section-group">
+      <h3 class="section-title">Optional</h3>
+
+      <div class="row">
+        <label>
+          <span>Album</span>
+          <input name="album" type="text"
+                 value={initialAlbum} placeholder="Album slug or title" />
+        </label>
+
+        <label>
+          <span>Chord Sheet URL</span>
+          <input name="chordSheetUrl" type="url"
+                 value={initialChordSheetUrl} placeholder="https://..." />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>
+          <span>Status</span>
+          <select name="status">
+            <option value="idea"     selected={initialStatus === 'idea'}>Idea</option>
+            <option value="demo"     selected={initialStatus === 'demo'}>Demo</option>
+            <option value="arranged" selected={initialStatus === 'arranged'}>Arranged</option>
+            <option value="recorded" selected={initialStatus === 'recorded'}>Recorded</option>
+            <option value="released" selected={initialStatus === 'released'}>Released</option>
+          </select>
+        </label>
+
+        <label class="grow">
+          <span>Themes (JSON)</span>
+          <input name="themes" type="text"
+                 value={initialThemes} placeholder='["love", "loss"]' />
+        </label>
+      </div>
+
+      <div class="row">
+        <label class="grow">
+          <span>Lyrics / Body</span>
+          <textarea name="body" rows="12" placeholder="Lyrics…">{initialBody}</textarea>
+        </label>
+      </div>
+    </div>
+
+    <!-- ── Slug ────────────────────────────────────────────────────────────── -->
+    <div class="row">
+      <label class="grow">
+        <span>Slug (auto-generated)</span>
+        <input name="slug" type="text"
+               value={initialSlug} placeholder="song-title" />
+        <small>Auto-generated from title if empty</small>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button type="submit">Generate song</button>
+    </div>
+
+    <p id="song-create-status" class="status" aria-live="polite"></p>
+
+    <label class="output">
+      <span>Generated MDX</span>
+      <textarea id="song-create-output" rows="15" readonly></textarea>
+    </label>
+
+  </form>
+</FormShell>
+
+<script>
+  import { initFormShell } from '../../../utils/form/formShell.ts';
+
+  // ---------------------------------------------------------------------------
+  // Element refs
+  // ---------------------------------------------------------------------------
+
+  const form      = document.getElementById('song-create-form') as HTMLFormElement;
+  const outputEl  = document.getElementById('song-create-output') as HTMLTextAreaElement;
+  const titleField = form.querySelector<HTMLInputElement>('input[name="title"]')!;
+  const slugField  = form.querySelector<HTMLInputElement>('input[name="slug"]')!;
+  const chordVoicingsHidden = document.getElementById('chord-voicings-hidden') as HTMLInputElement;
+
+  // ---------------------------------------------------------------------------
+  // Shell init — wires toggle, reset, and provides setStatus
+  // ---------------------------------------------------------------------------
+
+  const { setStatus } = initFormShell({
+    formId:   'song-create-form',
+    statusId: 'song-create-status',
+    onReset() {
+      // Clear the hidden chord voicings input; ChordVoicingSelector handles
+      // its own internal display state via its own reset logic.
+      chordVoicingsHidden.value = '[]';
+      outputEl.value = '';
+    },
+  });
+
+  // ---------------------------------------------------------------------------
+  // ChordVoicingSelector sync
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Keeps the hidden chordVoicings input in sync with ChordVoicingSelector.
+   *
+   * The child dispatches `chord-voicings-change` (bubbles: true) whenever the
+   * user adds or removes a chord. We write the slug array into the hidden input
+   * so FormData picks it up on submit.
+   */
+  document.addEventListener('chord-voicings-change', (e: Event) => {
+    const { slugs } = (e as CustomEvent<{ slugs: string[] }>).detail;
+    chordVoicingsHidden.value = JSON.stringify(slugs);
+  });
+
+  // ---------------------------------------------------------------------------
+  // SectionManager sync
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Keeps the hidden sections and structure inputs in sync with SectionManager.
+   *
+   * The child dispatches `section-manager-change` (bubbles: true) whenever the
+   * user modifies sections or structure.
+   */
+  document.addEventListener('section-manager-change', (e: Event) => {
+    const { sections, structure } =
+      (e as CustomEvent<{ sections: any[]; structure: string[] }>).detail;
+
+    const sectionsInput  = document.querySelector<HTMLInputElement>('input[name="sections"]');
+    const structureInput = document.querySelector<HTMLInputElement>('input[name="structure"]');
+
+    if (sectionsInput)  sectionsInput.value  = JSON.stringify(sections);
+    if (structureInput) structureInput.value = JSON.stringify(structure);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Key root → ChordVoicingSelector sync
+  // ---------------------------------------------------------------------------
+
+  const keyRootSelect = form.querySelector<HTMLSelectElement>('select[name="keyRoot"]');
+  const selectorRoot  = document.querySelector<HTMLElement>('.chord-voicing-selector');
+
+  /**
+   * Keeps ChordVoicingSelector's `data-key-root` attribute in sync with the
+   * Key Root <select> so chord colours update reactively without re-mounting.
+   */
+  keyRootSelect?.addEventListener('change', () => {
+    if (selectorRoot && keyRootSelect.value) {
+      selectorRoot.setAttribute('data-key-root', keyRootSelect.value);
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Slug auto-generation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Derives a URL-safe slug from the title field and writes it into the slug
+   * field, but only when the slug field is still empty (i.e. the user hasn't
+   * typed their own).
+   */
+  function generateSlug(): void {
+    if (slugField.value) return;
+    const title = titleField.value.trim();
+    if (!title) return;
+    slugField.value =
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-') + '-0';
+  }
+
+  titleField.addEventListener('input', generateSlug);
+
+  // ---------------------------------------------------------------------------
+  // Submit
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Collects FormData, builds the typed payload, and calls the `createSong`
+   * Astro action. Reloads the page on success so the new entry appears in the
+   * collection list.
+   */
+  form.addEventListener('submit', async (e: SubmitEvent): Promise<void> => {
+    e.preventDefault();
+    outputEl.value = '';
+    setStatus('Working…');
+
+    const formData = new FormData(form);
+    const rawData  = Object.fromEntries(formData.entries());
+
+    try {
+      const { actions } = await import('astro:actions');
+
+      const payload = {
+        slug:                rawData.slug                as string,
+        title:               rawData.title               as string,
+        keyRoot:             rawData.keyRoot             as string,
+        keyMode:             rawData.keyMode             as 'major' | 'minor',
+        tempo:               rawData.tempo ? parseInt(rawData.tempo as string, 10) : undefined,
+        timeSignatureTop:    parseInt(rawData.timeSignatureTop    as string, 10),
+        timeSignatureBottom: parseInt(rawData.timeSignatureBottom as string, 10),
+        chordVoicings:       JSON.parse(rawData.chordVoicings as string || '[]'),
+        structure:           JSON.parse(rawData.structure       as string || '[]'),
+        sections:            JSON.parse(rawData.sections        as string || '[]'),
+        album:               rawData.album        ? rawData.album        as string : undefined,
+        chordSheetUrl:       rawData.chordSheetUrl ? rawData.chordSheetUrl as string : undefined,
+        status:              rawData.status as string || 'idea',
+        themes:              JSON.parse(rawData.themes as string || '[]'),
+        body:                rawData.body ? rawData.body as string : undefined,
+      };
+
+      const { data, error } = await actions.createSong(payload);
+
+      if (error) {
+        setStatus(`Error: ${error.message || 'Action failed'}`, 'error');
+        return;
+      }
+
+      setStatus(`Success: ${data.message || `Song ${data.id} created`}`, 'ok');
+
+      if (data.success) {
+        form.reset();
+        chordVoicingsHidden.value = '[]';
+        setTimeout(() => window.location.reload(), 1000);
+      }
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : String(err), 'error');
+    }
+  });
+</script>
+
+<style>
+  /* ── Song-specific styles only ───────────────────────────────────────────── */
+  /* All shared chrome styles live in FormShell.astro.                         */
+
+  .time-sig {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .time-sig input {
+    width: 60px;
+  }
+
+  .output span {
+    font-weight: 700;
+  }
+</style>

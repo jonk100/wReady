@@ -342,5 +342,626 @@
     "type": "Scripted",
     "vote_average": 7.4,
     "vote_count": 41
+  },
+  "tv:DTF St. Louis": {
+    "adult": false,
+    "backdrop_path": "/8mO4cYZI1X8sanR4u6f07FiQ8dC.jpg",
+    "created_by": [
+      {
+        "id": 20647,
+        "credit_id": "69a5dc789c477d77b7c4beda",
+        "name": "Steven Conrad",
+        "original_name": "Steven Conrad",
+        "gender": 2,
+        "profile_path": "/erxnNhxejp4C9HLE4gXtb7ZaNhi.jpg"
+      }
+    ],
+    "episode_run_time": [],
+    "first_air_date": "2026-03-01",
+    "genres": [
+      {
+        "id": 35,
+        "name": "Comedy"
+      },
+      {
+        "id": 18,
+        "name": "Drama"
+      }
+    ],
+    "homepage": "https://www.hbo.com/content/dtf-st-louis",
+    "id": 206828,
+    "in_production": true,
+    "languages": [
+      "en"
+    ],
+    "last_air_date": "2026-04-05",
+    "last_episode_to_air": {
+      "id": 6893550,
+      "name": "The Denny's Plan",
+      "overview": "Floyd's ego takes a hit after a failed attempt to reconnect with Carol, leading Clark to help his friend using the DTF app.",
+      "vote_average": 5,
+      "vote_count": 4,
+      "air_date": "2026-04-05",
+      "episode_number": 6,
+      "episode_type": "standard",
+      "production_code": "",
+      "runtime": 49,
+      "season_number": 1,
+      "show_id": 206828,
+      "still_path": "/44ImACO3TOIZyBSKMeyxP8T77qb.jpg"
+    },
+    "name": "DTF St. Louis",
+    "next_episode_to_air": {
+      "id": 6893551,
+      "name": "No One's Normal. It Just Looks That Way from Across the Street",
+      "overview": "With Tiger Tiger out of the picture, Clark proposes a new plan. After a series of revelations, Plumb and Homer are forced to question everything they thought they knew about the case.",
+      "vote_average": 1,
+      "vote_count": 1,
+      "air_date": "2026-04-12",
+      "episode_number": 7,
+      "episode_type": "finale",
+      "production_code": "",
+      "runtime": 60,
+      "season_number": 1,
+      "show_id": 206828,
+      "still_path": "/48CswIpCwD7ICEfu0Y2FTIbEjwq.jpg"
+    },
+    "networks": [
+      {
+        "id": 49,
+        "logo_path": "/tuomPhY2UtuPTqqFnKMVHvSb724.png",
+        "name": "HBO",
+        "origin_country": "US"
+      }
+    ],
+    "number_of_episodes": 7,
+    "number_of_seasons": 1,
+    "origin_country": [
+      "US"
+    ],
+    "original_language": "en",
+    "original_name": "DTF St. Louis",
+    "overview": "A love triangle among three adults experiencing middle-age malaise leads to one of them ending up dead.",
+    "popularity": 19.2243,
+    "poster_path": "/xHfafw9UmomDc7jO25s9MpiL4Zs.jpg",
+    "production_companies": [
+      {
+        "id": 1423,
+        "logo_path": "/gzvsPHV9WqcQMrvI8pq5hbuvEZ5.png",
+        "name": "Escape Artists",
+        "origin_country": "US"
+      },
+      {
+        "id": 2230,
+        "logo_path": "/igOjospzsKQIbpuFCGhoN5F9icS.png",
+        "name": "MGM Television",
+        "origin_country": "US"
+      },
+      {
+        "id": 37361,
+        "logo_path": "/xpbUNXnrMeEK1ynbqVnHp8ZOVKW.png",
+        "name": "Aggregate Films",
+        "origin_country": "US"
+      },
+      {
+        "id": 243583,
+        "logo_path": null,
+        "name": "Bravo Axolotl",
+        "origin_country": "US"
+      },
+      {
+        "id": 63377,
+        "logo_path": "/rnGmxRE4w9ZvxKg6SHLqUprqynK.png",
+        "name": "Elephant Pictures",
+        "origin_country": "US"
+      }
+    ],
+    "production_countries": [
+      {
+        "iso_3166_1": "US",
+        "name": "United States of America"
+      }
+    ],
+    "seasons": [
+      {
+        "air_date": "2026-03-01",
+        "episode_count": 7,
+        "id": 302382,
+        "name": "Miniseries",
+        "overview": "",
+        "poster_path": "/xHfafw9UmomDc7jO25s9MpiL4Zs.jpg",
+        "season_number": 1,
+        "vote_average": 4.8
+      }
+    ],
+    "spoken_languages": [
+      {
+        "english_name": "English",
+        "iso_639_1": "en",
+        "name": "English"
+      }
+    ],
+    "status": "Returning Series",
+    "tagline": "You never know which way a friendship will swing.",
+    "type": "Miniseries",
+    "vote_average": 5.7,
+    "vote_count": 31
+  },
+  "tv:Game of Thrones": {
+    "adult": false,
+    "backdrop_path": "/zZqpAXxVSBtxV9qPBcscfXBcL2w.jpg",
+    "created_by": [
+      {
+        "id": 9813,
+        "credit_id": "5256c8c219c2956ff604858a",
+        "name": "David Benioff",
+        "original_name": "David Benioff",
+        "gender": 2,
+        "profile_path": "/xvNN5huL0X8yJ7h3IZfGG4O2zBD.jpg"
+      },
+      {
+        "id": 228068,
+        "credit_id": "552e611e9251413fea000901",
+        "name": "D. B. Weiss",
+        "original_name": "D. B. Weiss",
+        "gender": 2,
+        "profile_path": "/6Wt006TIQoDSSnl0YaKihfn3w7K.jpg"
+      }
+    ],
+    "episode_run_time": [],
+    "first_air_date": "2011-04-17",
+    "genres": [
+      {
+        "id": 10765,
+        "name": "Sci-Fi & Fantasy"
+      },
+      {
+        "id": 18,
+        "name": "Drama"
+      },
+      {
+        "id": 10759,
+        "name": "Action & Adventure"
+      }
+    ],
+    "homepage": "https://www.hbo.com/game-of-thrones",
+    "id": 1399,
+    "in_production": false,
+    "languages": [
+      "en"
+    ],
+    "last_air_date": "2019-05-19",
+    "last_episode_to_air": {
+      "id": 1551830,
+      "name": "The Iron Throne",
+      "overview": "In the aftermath of the devastating attack on King's Landing, Daenerys must face the survivors.",
+      "vote_average": 4.518,
+      "vote_count": 410,
+      "air_date": "2019-05-19",
+      "episode_number": 6,
+      "episode_type": "finale",
+      "production_code": "806",
+      "runtime": 80,
+      "season_number": 8,
+      "show_id": 1399,
+      "still_path": "/zBi2O5EJfgTS6Ae0HdAYLm9o2nf.jpg"
+    },
+    "name": "Game of Thrones",
+    "next_episode_to_air": null,
+    "networks": [
+      {
+        "id": 49,
+        "logo_path": "/tuomPhY2UtuPTqqFnKMVHvSb724.png",
+        "name": "HBO",
+        "origin_country": "US"
+      }
+    ],
+    "number_of_episodes": 73,
+    "number_of_seasons": 8,
+    "origin_country": [
+      "US"
+    ],
+    "original_language": "en",
+    "original_name": "Game of Thrones",
+    "overview": "Seven noble families fight for control of the mythical land of Westeros. Friction between the houses leads to full-scale war. All while a very ancient evil awakens in the farthest north. Amidst the war, a neglected military order of misfits, the Night's Watch, is all that stands between the realms of men and icy horrors beyond.",
+    "popularity": 178.7821,
+    "poster_path": "/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+    "production_companies": [
+      {
+        "id": 76043,
+        "logo_path": "/9RO2vbQ67otPrBLXCaC8UMp3Qat.png",
+        "name": "Revolution Sun Studios",
+        "origin_country": "US"
+      },
+      {
+        "id": 12525,
+        "logo_path": null,
+        "name": "Television 360",
+        "origin_country": ""
+      },
+      {
+        "id": 5820,
+        "logo_path": null,
+        "name": "Generator Entertainment",
+        "origin_country": "GB"
+      },
+      {
+        "id": 12526,
+        "logo_path": null,
+        "name": "Bighead Littlehead",
+        "origin_country": "US"
+      }
+    ],
+    "production_countries": [
+      {
+        "iso_3166_1": "GB",
+        "name": "United Kingdom"
+      },
+      {
+        "iso_3166_1": "US",
+        "name": "United States of America"
+      }
+    ],
+    "seasons": [
+      {
+        "air_date": "2010-12-05",
+        "episode_count": 293,
+        "id": 3627,
+        "name": "Specials",
+        "overview": "",
+        "poster_path": "/aos6lC1JGYt6ZRL85lgstNsfSeY.jpg",
+        "season_number": 0,
+        "vote_average": 0
+      },
+      {
+        "air_date": "2011-04-17",
+        "episode_count": 10,
+        "id": 3624,
+        "name": "Season 1",
+        "overview": "Trouble is brewing in the Seven Kingdoms of Westeros. For the driven inhabitants of this visionary world, control of Westeros' Iron Throne holds the lure of great power. But in a land where the seasons can last a lifetime, winter is coming...and beyond the Great Wall that protects them, an ancient evil has returned. In Season One, the story centers on three primary areas: the Stark and the Lannister families, whose designs on controlling the throne threaten a tenuous peace; the dragon princess Daenerys, heir to the former dynasty, who waits just over the Narrow Sea with her malevolent brother Viserys; and the Great Wall--a massive barrier of ice where a forgotten danger is stirring.",
+        "poster_path": "/wgfKiqzuMrFIkU1M68DDDY8kGC1.jpg",
+        "season_number": 1,
+        "vote_average": 8.4
+      },
+      {
+        "air_date": "2012-04-01",
+        "episode_count": 10,
+        "id": 3625,
+        "name": "Season 2",
+        "overview": "The cold winds of winter are rising in Westeros...war is coming...and five kings continue their savage quest for control of the all-powerful Iron Throne. With winter fast approaching, the coveted Iron Throne is occupied by the cruel Joffrey, counseled by his conniving mother Cersei and uncle Tyrion. But the Lannister hold on the Throne is under assault on many fronts. Meanwhile, a new leader is rising among the wildings outside the Great Wall, adding new perils for Jon Snow and the order of the Night's Watch.",
+        "poster_path": "/9xfNkPwDOqyeUvfNhs1XlWA0esP.jpg",
+        "season_number": 2,
+        "vote_average": 8.3
+      },
+      {
+        "air_date": "2013-03-31",
+        "episode_count": 10,
+        "id": 3626,
+        "name": "Season 3",
+        "overview": "Duplicity and treachery...nobility and honor...conquest and triumph...and, of course, dragons. In Season 3, family and loyalty are the overarching themes as many critical storylines from the first two seasons come to a brutal head. Meanwhile, the Lannisters maintain their hold on King's Landing, though stirrings in the North threaten to alter the balance of power; Robb Stark, King of the North, faces a major calamity as he tries to build on his victories; a massive army of wildlings led by Mance Rayder march for the Wall; and Daenerys Targaryen--reunited with her dragons--attempts to raise an army in her quest for the Iron Throne.",
+        "poster_path": "/5MkZjRnCKiIGn3bkXrXfndEzqOU.jpg",
+        "season_number": 3,
+        "vote_average": 8.4
+      },
+      {
+        "air_date": "2014-04-06",
+        "episode_count": 10,
+        "id": 3628,
+        "name": "Season 4",
+        "overview": "The War of the Five Kings is drawing to a close, but new intrigues and plots are in motion, and the surviving factions must contend with enemies not only outside their ranks, but within.",
+        "poster_path": "/jXIMScXE4J4EVHUba1JgxZnWbo4.jpg",
+        "season_number": 4,
+        "vote_average": 8.5
+      },
+      {
+        "air_date": "2015-04-12",
+        "episode_count": 10,
+        "id": 62090,
+        "name": "Season 5",
+        "overview": "The War of the Five Kings, once thought to be drawing to a close, is instead entering a new and more chaotic phase. Westeros is on the brink of collapse, and many are seizing what they can while the realm implodes, like a corpse making a feast for crows.",
+        "poster_path": "/7Q1Hy1AHxAzA2lsmzEMBvuWTX0x.jpg",
+        "season_number": 5,
+        "vote_average": 8.2
+      },
+      {
+        "air_date": "2016-04-24",
+        "episode_count": 10,
+        "id": 71881,
+        "name": "Season 6",
+        "overview": "Following the shocking developments at the conclusion of season five, survivors from all parts of Westeros and Essos regroup to press forward, inexorably, towards their uncertain individual fates. Familiar faces will forge new alliances to bolster their strategic chances at survival, while new characters will emerge to challenge the balance of power in the east, west, north and south.",
+        "poster_path": "/p1udLh0gfqyZFmXBGa393gk8go5.jpg",
+        "season_number": 6,
+        "vote_average": 8.3
+      },
+      {
+        "air_date": "2017-07-16",
+        "episode_count": 7,
+        "id": 81266,
+        "name": "Season 7",
+        "overview": "The long winter is here. And with it comes a convergence of armies and attitudes that have been brewing for years.",
+        "poster_path": "/oX51n32QyHeFP5kErksemJsJljL.jpg",
+        "season_number": 7,
+        "vote_average": 8.2
+      },
+      {
+        "air_date": "2019-04-14",
+        "episode_count": 6,
+        "id": 107971,
+        "name": "Season 8",
+        "overview": "The Great War has come, the Wall has fallen and the Night King's army of the dead marches towards Westeros. The end is here, but who will take the Iron Throne?",
+        "poster_path": "/259Q5FuaD3TNB7DGauTaJVRC8XV.jpg",
+        "season_number": 8,
+        "vote_average": 6.2
+      }
+    ],
+    "spoken_languages": [
+      {
+        "english_name": "English",
+        "iso_639_1": "en",
+        "name": "English"
+      }
+    ],
+    "status": "Ended",
+    "tagline": "Winter is coming.",
+    "type": "Scripted",
+    "vote_average": 8.459,
+    "vote_count": 26576
+  },
+  "movie:Inception": {
+    "adult": false,
+    "backdrop_path": "/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg",
+    "belongs_to_collection": null,
+    "budget": 160000000,
+    "genres": [
+      {
+        "id": 28,
+        "name": "Action"
+      },
+      {
+        "id": 878,
+        "name": "Science Fiction"
+      },
+      {
+        "id": 12,
+        "name": "Adventure"
+      }
+    ],
+    "homepage": "https://www.warnerbros.com/movies/inception",
+    "id": 27205,
+    "imdb_id": "tt1375666",
+    "origin_country": [
+      "US",
+      "GB"
+    ],
+    "original_language": "en",
+    "original_title": "Inception",
+    "overview": "Cobb, a skilled thief who commits corporate espionage by infiltrating the subconscious of his targets is offered a chance to regain his old life as payment for a task considered to be impossible: \"inception\", the implantation of another person's idea into a target's subconscious.",
+    "popularity": 28.6011,
+    "poster_path": "/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg",
+    "production_companies": [
+      {
+        "id": 923,
+        "logo_path": "/5UQsZrfbfG2dYJbx8DxfoTr2Bvu.png",
+        "name": "Legendary Pictures",
+        "origin_country": "US"
+      },
+      {
+        "id": 9996,
+        "logo_path": "/3tvBqYsBhxWeHlu62SIJ1el93O7.png",
+        "name": "Syncopy",
+        "origin_country": "GB"
+      },
+      {
+        "id": 174,
+        "logo_path": "/zhD3hhtKB5qyv7ZeL4uLpNxgMVU.png",
+        "name": "Warner Bros. Pictures",
+        "origin_country": "US"
+      }
+    ],
+    "production_countries": [
+      {
+        "iso_3166_1": "GB",
+        "name": "United Kingdom"
+      },
+      {
+        "iso_3166_1": "US",
+        "name": "United States of America"
+      }
+    ],
+    "release_date": "2010-07-15",
+    "revenue": 839030630,
+    "runtime": 148,
+    "spoken_languages": [
+      {
+        "english_name": "English",
+        "iso_639_1": "en",
+        "name": "English"
+      },
+      {
+        "english_name": "French",
+        "iso_639_1": "fr",
+        "name": "Français"
+      },
+      {
+        "english_name": "Japanese",
+        "iso_639_1": "ja",
+        "name": "日本語"
+      },
+      {
+        "english_name": "Swahili",
+        "iso_639_1": "sw",
+        "name": "Kiswahili"
+      }
+    ],
+    "status": "Released",
+    "tagline": "Your mind is the scene of the crime.",
+    "title": "Inception",
+    "video": false,
+    "vote_average": 8.372,
+    "vote_count": 38981
+  },
+  "tv:Severance": {
+    "adult": false,
+    "backdrop_path": "/ixgFmf1X59PUZam2qbAfskx2gQr.jpg",
+    "created_by": [
+      {
+        "id": 3442409,
+        "credit_id": "6217f14d0e597b00412768f1",
+        "name": "Dan Erickson",
+        "original_name": "Dan Erickson",
+        "gender": 2,
+        "profile_path": "/qzQ30V43kbVoMjJXRw6ydkicXEP.jpg"
+      }
+    ],
+    "episode_run_time": [],
+    "first_air_date": "2022-02-17",
+    "genres": [
+      {
+        "id": 18,
+        "name": "Drama"
+      },
+      {
+        "id": 9648,
+        "name": "Mystery"
+      },
+      {
+        "id": 10765,
+        "name": "Sci-Fi & Fantasy"
+      }
+    ],
+    "homepage": "https://tv.apple.com/show/umc.cmc.1srk2goyh2q2zdxcx605w8vtx",
+    "id": 95396,
+    "in_production": true,
+    "languages": [
+      "en"
+    ],
+    "last_air_date": "2025-03-20",
+    "last_episode_to_air": {
+      "id": 5469142,
+      "name": "Cold Harbor",
+      "overview": "Mark forms a shaky alliance in an all-or-nothing play, while the team makes a dangerous last stand.",
+      "vote_average": 8.716,
+      "vote_count": 88,
+      "air_date": "2025-03-20",
+      "episode_number": 10,
+      "episode_type": "finale",
+      "production_code": "210",
+      "runtime": 76,
+      "season_number": 2,
+      "show_id": 95396,
+      "still_path": "/1FhuOQo7aBclaOE2WenXmZMCDYn.jpg"
+    },
+    "name": "Severance",
+    "next_episode_to_air": null,
+    "networks": [
+      {
+        "id": 2552,
+        "logo_path": "/bngHRFi794mnMq34gfVcm9nDxN1.png",
+        "name": "Apple TV",
+        "origin_country": ""
+      }
+    ],
+    "number_of_episodes": 19,
+    "number_of_seasons": 3,
+    "origin_country": [
+      "US"
+    ],
+    "original_language": "en",
+    "original_name": "Severance",
+    "overview": "Mark leads a team of office workers whose memories have been surgically divided between their work and personal lives. When a mysterious colleague appears outside of work, it begins a journey to discover the truth about their jobs.",
+    "popularity": 33.6432,
+    "poster_path": "/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg",
+    "production_companies": [
+      {
+        "id": 100640,
+        "logo_path": "/5BR67T28TVm2UMH8GCRDftafsaJ.png",
+        "name": "Endeavor Content",
+        "origin_country": "US"
+      },
+      {
+        "id": 2932,
+        "logo_path": "/4uLKLjGivVg2YnAIhAn8k7ZuVFj.png",
+        "name": "Red Hour",
+        "origin_country": "US"
+      },
+      {
+        "id": 181874,
+        "logo_path": "/crrgXvLhDO9c57HYrbO4H58Vxmb.png",
+        "name": "Fifth Season",
+        "origin_country": "US"
+      },
+      {
+        "id": 254490,
+        "logo_path": null,
+        "name": "Animals & People",
+        "origin_country": "US"
+      },
+      {
+        "id": 166623,
+        "logo_path": "/rvmwTPf8K4tMFCSqzS4rKs9K0Eo.png",
+        "name": "Westward",
+        "origin_country": "US"
+      }
+    ],
+    "production_countries": [
+      {
+        "iso_3166_1": "US",
+        "name": "United States of America"
+      }
+    ],
+    "seasons": [
+      {
+        "air_date": "2021-12-15",
+        "episode_count": 1,
+        "id": 443382,
+        "name": "Specials",
+        "overview": "",
+        "poster_path": "/f3E2o8DbW9QSzu31yY3Q1av5JO7.jpg",
+        "season_number": 0,
+        "vote_average": 0
+      },
+      {
+        "air_date": "2022-02-17",
+        "episode_count": 9,
+        "id": 135726,
+        "name": "Season 1",
+        "overview": "At Lumon Industries, employees undergo \"severance,\" a procedure dividing their work and personal memories. Mark, a grieving team leader, begins to uncover the dark secrets of the company, forcing him and his coworkers to confront questions of identity, free will, and corporate control.",
+        "poster_path": "/lFf6LLrQjYldcZItzOkGmMMigP7.jpg",
+        "season_number": 1,
+        "vote_average": 8.4
+      },
+      {
+        "air_date": "2025-01-16",
+        "episode_count": 10,
+        "id": 401674,
+        "name": "Season 2",
+        "overview": "Mark and his friends learn the dire consequences of trifling with the severance barrier, leading them further down a path of woe.",
+        "poster_path": "/Rb7sga832Cyqvafd7CqOzbwdK4.jpg",
+        "season_number": 2,
+        "vote_average": 8.1
+      },
+      {
+        "air_date": null,
+        "episode_count": 0,
+        "id": 447475,
+        "name": "Season 3",
+        "overview": "",
+        "poster_path": null,
+        "season_number": 3,
+        "vote_average": 0
+      }
+    ],
+    "spoken_languages": [
+      {
+        "english_name": "English",
+        "iso_639_1": "en",
+        "name": "English"
+      }
+    ],
+    "status": "Returning Series",
+    "tagline": "There's more to work than life.",
+    "type": "Scripted",
+    "vote_average": 8.4,
+    "vote_count": 2564
   }
 }

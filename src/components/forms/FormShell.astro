@@ -1,0 +1,308 @@
+---
+/**
+ * FormShell.astro
+ *
+ * Shared collapsible wrapper used by all *CreateForm components.
+ *
+ * Renders the amber-themed `<section> / <details>` shell including:
+ *   - Reset button (dispatches `formshell:reset` on the document)
+ *   - Summary label
+ *   - Toggle chevron button (optional — Chord form omits it)
+ *
+ * The actual `<form>` and its fields are passed in via the default slot.
+ *
+ * Usage:
+ *   <FormShell label="Add a new song" formId="song-create-form" showToggle>
+ *     <form id="song-create-form" class="form">…</form>
+ *   </FormShell>
+ *
+ * The consumer's `<script>` should call `initFormShell()` from
+ * `src/utils/formShell.ts` to wire up the reset and toggle behaviour.
+ */
+
+export type Props = {
+  /** Text shown in the summary bar, e.g. "Add a new song". */
+  label: string;
+  /**
+   * Whether to render the chevron toggle button.
+   * Song and Review forms use it; Chord form omits it.
+   * @default false
+   */
+  showToggle?: boolean;
+  /**
+   * Optional id placed on the `<details>` element.
+   * Useful when the page contains multiple shells and the consumer
+   * script needs a stable selector (e.g. ChordCreateForm).
+   */
+  detailsId?: string;
+};
+
+const { label, showToggle = false, detailsId } = Astro.props;
+---
+
+<section class="create">
+  <details id={detailsId}>
+    <summary class="create-summary">
+      <div class="create-summary-content">
+
+        <!-- Reset button — script wires this up via .create-reset-btn -->
+        <button class="create-reset-btn" type="button" title="Reset form">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+               stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+          </svg>
+        </button>
+
+        <span class="create-summary-text">{label}</span>
+
+        <!-- Toggle chevron — only rendered when showToggle is true -->
+        {showToggle && (
+          <button class="create-toggle-btn" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                 stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+        )}
+
+        <!-- Spacer keeps the label centred when there is no toggle button -->
+        {!showToggle && <span class="create-toggle-placeholder" aria-hidden="true"></span>}
+
+      </div>
+    </summary>
+
+    <!-- Each form's fields are injected here -->
+    <slot />
+
+  </details>
+</section>
+
+<style>
+  /* ── Outer shell ─────────────────────────────────────────────────────────── */
+
+  .create {
+    margin-bottom: var(--space-8);
+    border: 1px solid #3a300f;
+    border-radius: 6px;
+    background: #1a1508;
+    color: #d4bb88;
+    font-family: "Courier New", "Courier", monospace;
+    overflow: hidden;
+  }
+
+  /* ── Summary bar ─────────────────────────────────────────────────────────── */
+
+  .create-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px 6px;
+    border-bottom: 1px solid #3a300f;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+
+  /* Remove the default disclosure triangle in WebKit */
+  .create-summary::-webkit-details-marker { display: none; }
+
+  .create-summary-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .create-summary-text {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.85rem;
+    font-weight: 400;
+    letter-spacing: .15em;
+    color: #d4bb88;
+    text-align: center;
+    text-transform: uppercase;
+    flex: 1;
+  }
+
+  /* ── Icon buttons (reset + toggle) ──────────────────────────────────────── */
+
+  .create-reset-btn,
+  .create-toggle-btn {
+    background: transparent;
+    border: 1px solid #3a300f;
+    border-radius: 50%;
+    color: #7a6a44;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .create-reset-btn:hover,
+  .create-toggle-btn:hover {
+    color: #e8a030;
+    border-color: #c8922a;
+  }
+
+  .create-toggle-btn {
+    transition: color 0.15s, border-color 0.15s, transform 0.15s;
+  }
+
+  details[open] .create-toggle-btn {
+    transform: rotate(180deg);
+  }
+
+  /*
+   * Invisible spacer that mirrors the 28px reset button on the left,
+   * keeping the label visually centred when there is no toggle button.
+   */
+  .create-toggle-placeholder {
+    width: 28px;
+    flex-shrink: 0;
+  }
+
+  /* ── Form area ───────────────────────────────────────────────────────────── */
+
+  /*
+   * Slotted <form> elements carry the `.form` class themselves.
+   * These rules target that class inside this shell so the styles
+   * are scoped to FormShell without needing :global().
+   */
+  .create :global(.form) {
+    margin-top: var(--space-4);
+    padding: 14px 20px 20px;
+    display: grid;
+    gap: var(--space-4);
+    background: var(--surface-subtle);
+    border-top: 1px solid #3a300f;
+  }
+
+  /* ── Shared form element styles ──────────────────────────────────────────── */
+
+  .create :global(.section-group) {
+    margin-bottom: var(--space-6);
+  }
+
+  .create :global(.section-title) {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #e8a030;
+    margin: 0 0 var(--space-3) var(--space-2);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+  }
+
+  .create :global(.row) {
+    display: flex;
+    gap: var(--space-4);
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .create :global(label) {
+    display: grid;
+    gap: var(--space-2);
+    min-width: 220px;
+    font-size: var(--text-sm);
+  }
+
+  .create :global(label > span) {
+    font-weight: 600;
+  }
+
+  .create :global(.grow) {
+    flex: 1;
+  }
+
+  .create :global(input),
+  .create :global(select),
+  .create :global(textarea) {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+  }
+
+  .create :global(select) {
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M6 9l6 6M6 6l6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+    /* Override background so the arrow SVG is visible */
+    background-color: var(--bg-raised);
+    color: var(--text-primary);
+  }
+
+  .create :global(select:focus) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(232, 197, 71, 0.1);
+  }
+
+  .create :global(select option) {
+    background: var(--bg-raised);
+    color: var(--text-primary);
+    padding: 0.5rem;
+  }
+
+  .create :global(textarea) {
+    resize: vertical;
+    min-height: 100px;
+    font-family: var(--font-mono);
+  }
+
+  .create :global(small) {
+    display: block;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin-top: var(--space-1);
+    font-family: var(--font-body);
+  }
+
+  /* ── Actions row & submit button ─────────────────────────────────────────── */
+
+  .create :global(.actions) {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    margin-top: var(--space-2);
+  }
+
+  .create :global(button[type="submit"]) {
+    padding: 0.6rem 1.2rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity var(--transition-fast);
+  }
+
+  .create :global(button[type="submit"]:hover) {
+    opacity: 0.85;
+  }
+
+  /* ── Status paragraph ────────────────────────────────────────────────────── */
+
+  .create :global(.status) {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+  }
+</style>

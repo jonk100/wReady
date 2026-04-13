@@ -56,11 +56,14 @@ const BLOCK_RE =
 
 export const remarkScreenplay: Plugin<[], Root> = () => {
   return (tree, file) => {
+    // Skip processing entirely for non-scene files
+    if (!isSceneFilePath(String((file as any)?.path ?? ""))) {
+      return;
+    }
+
     const newChildren: any[] = [];
 
-    const implicitEnabled = isSceneFilePath(
-      String((file as any)?.path ?? "")
-    );
+    const implicitEnabled = true;
 
     let inDialogue = false;
     let dialogueBuffer: any[] = [];

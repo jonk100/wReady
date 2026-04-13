@@ -1,0 +1,230 @@
+---
+/**
+ * ChordCreateForm.astro
+ *
+ * Form for creating a new chord voicing entry.
+ *
+ * Shell chrome (reset button, amber summary bar, collapsible details) is
+ * handled by `FormShell.astro`. Toggle/reset JS is handled by `initFormShell`
+ * from `src/utils/formShell.ts`.
+ *
+ * This form also listens for the `chord:create` CustomEvent dispatched by
+ * `ChordAnalyser.astro`, which pre-fills all fields from a detected chord.
+ */
+
+import FormShell from './FormShell.astro';
+
+export type Props = {
+  initial?: {
+    slug?:           string;
+    displayName?:    string;
+    voicingLabel?:   string;
+    baseFret?:       number;
+    fingering?:      number[];
+    frets?:          number[];
+    notes?:          string[];
+    barre?:          { finger: number; fret: number; strings: [number, number] };
+    alternateNames?: string[];
+  };
+};
+
+const { initial } = Astro.props;
+---
+
+<FormShell label="Add a new chord voicing" detailsId="chord-form-details">
+  <form id="chord-create-form" class="form">
+
+    <div class="row">
+      <label>
+        <span>Slug</span>
+        <input name="slug" type="text" required
+               value={initial?.slug || ""}
+               placeholder="am7-1" />
+      </label>
+      <label>
+        <span>Display name</span>
+        <input name="displayName" type="text" required
+               value={initial?.displayName || ""}
+               placeholder="Am7" />
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="grow">
+        <span>Voicing label</span>
+        <input name="voicingLabel" type="text" required
+               value={initial?.voicingLabel || ""}
+               placeholder="E-shape barre, 5th fret" />
+      </label>
+      <label>
+        <span>Base fret</span>
+        <input name="baseFret" type="number" min="1" required
+               value={initial?.baseFret || 1} />
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="grow">
+        <span>Fingering (JSON)</span>
+        <input name="fingering" type="text" required
+               value={JSON.stringify(initial?.fingering || [0,0,0,0,0,0])} />
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="grow">
+        <span>Frets (JSON)</span>
+        <input name="frets" type="text" required
+               value={JSON.stringify(initial?.frets || [-1,-1,-1,-1,-1,-1])} />
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="grow">
+        <span>Notes (JSON)</span>
+        <input name="notes" type="text"
+               value={JSON.stringify(initial?.notes || [])} />
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="grow">
+        <span>Alternate Names (JSON, optional)</span>
+        <input name="alternateNames" type="text"
+               value={initial?.alternateNames ? JSON.stringify(initial.alternateNames) : ""}
+               placeholder='["E7sus", "E7s4"]' />
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="grow">
+        <span>Barre (JSON, optional)</span>
+        <input name="barre" type="text"
+               value={initial?.barre ? JSON.stringify(initial.barre) : ""}
+               placeholder='{"finger":1,"fret":5,"strings":[1,6]}' />
+      </label>
+    </div>
+
+    <div class="actions">
+      <button type="submit">Save to Collection</button>
+    </div>
+
+    <p id="chord-create-status" class="status" aria-live="polite"></p>
+  </form>
+</FormShell>
+
+<script>
+  import { initFormShell } from '../../utils/form/formShell.ts';
+
+  // ---------------------------------------------------------------------------
+  // Element refs
+  // ---------------------------------------------------------------------------
+
+  const form = document.getElementById('chord-create-form') as HTMLFormElement;
+
+  // ---------------------------------------------------------------------------
+  // Shell init — wires reset button and status helper
+  // ---------------------------------------------------------------------------
+
+  const { setStatus } = initFormShell({
+    formId:   'chord-create-form',
+    statusId: 'chord-create-status',
+  });
+
+  // ---------------------------------------------------------------------------
+  // chord:create — pre-fill from ChordAnalyser
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Listens for the `chord:create` CustomEvent dispatched by ChordAnalyser.
+   * Fills all form inputs with the detected chord data, then opens the form
+   * so the user can review and save.
+   */
+  document.addEventListener('chord:create', async (e: Event) => {
+    const customEvent = e as CustomEvent<{
+      displayName: string;
+      frets:       number[];
+      notes:       string[];
+      fingering?:  number[];
+      baseFret?:   number;
+    }>;
+
+    const { displayName, frets, notes, fingering, baseFret } = customEvent.detail;
+
+    // Import chord analysis utilities dynamically
+    const { generateChordSuffix, generateChordFingering, generateChordBarre } =
+      await import('../../utils/music/chordUtils.ts');
+
+    const suffix            = generateChordSuffix(frets);
+    const barreData         = generateChordBarre(frets);
+    const generatedFingering = generateChordFingering(frets, displayName);
+
+    const fields: Record<string, string> = {
+      displayName,
+      frets:          JSON.stringify(frets),
+      notes:          JSON.stringify(notes),
+      fingering:      JSON.stringify(generatedFingering),
+      baseFret:       String(baseFret || 1),
+      slug:           displayName.toLowerCase().replace(/[^a-z0-9#]/g, '').replace(/#/g, 's') + `-${suffix}`,
+      barre:          barreData ? JSON.stringify(barreData) : '',
+    };
+
+    Object.entries(fields).forEach(([name, value]) => {
+      const input = form.querySelector<HTMLInputElement>(`[name="${name}"]`);
+      if (input) input.value = value;
+    });
+
+    // Expand the shell so the user sees the pre-filled form
+    const details = form.closest('details') as HTMLDetailsElement | null;
+    if (details) details.open = true;
+
+    setStatus('Form prefilled from analyser.', 'info');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Submit
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Collects FormData, validates JSON fields, and calls the `createChord`
+   * Astro action. Reloads the page on success so the new entry appears
+   * in the collection list.
+   */
+  form.addEventListener('submit', async (e: SubmitEvent): Promise<void> => {
+    e.preventDefault();
+    setStatus('Saving…');
+
+    const formData = new FormData(form);
+    const rawData  = Object.fromEntries(formData.entries());
+
+    try {
+      const { actions } = await import('astro:actions');
+
+      const payload = {
+        slug:           rawData.slug          as string,
+        displayName:    rawData.displayName   as string,
+        voicingLabel:   rawData.voicingLabel  as string,
+        baseFret:       rawData.baseFret      as string,
+        fingering:      JSON.parse(rawData.fingering      as string),
+        frets:          JSON.parse(rawData.frets          as string),
+        notes:          rawData.notes         as string,
+        alternateNames: rawData.alternateNames as string,
+        barre:          rawData.barre         as string,
+      };
+
+      const { data, error } = await actions.createChord(payload);
+
+      if (error) {
+        setStatus(`Error: ${error.message}`, 'error');
+        return;
+      }
+
+      if (data.success) {
+        setStatus(`Success: Saved ${data.id}.mdx`, 'ok');
+        setTimeout(() => window.location.reload(), 1000);
+      }
+    } catch (err) {
+      setStatus('Error parsing fields. Check your JSON format.', 'error');
+    }
+  });
+</script>
