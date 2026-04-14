@@ -25,7 +25,7 @@ function calculateTotalBars(sections: any[], structure: string[]) {
       <div class="structure-display">
         <div class="structure-sequence">
           {structure.map((sectionName: string, index: number) => (
-            <span class="structure-item">{sectionName}</span>
+            <a href={`#${sectionName}-${index}`} class="structure-item">{sectionName}</a>
           ))}
         </div>
         <div class="structure-stats">
@@ -45,6 +45,12 @@ function calculateTotalBars(sections: any[], structure: string[]) {
   }
 
   summary {
+    cursor: pointer;
+  }
+
+  .structure-item {
+    text-decoration: none;
+    color: inherit;
     cursor: pointer;
   }
 

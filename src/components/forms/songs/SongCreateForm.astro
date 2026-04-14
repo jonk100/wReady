@@ -353,6 +353,60 @@ const initialBody          = initial?.body          ?? '';
   // Submit
   // ---------------------------------------------------------------------------
 
+  function normalizeSectionName(raw: string): string {
+    return raw.trim().toLowerCase().replace(/\s+/g, '-');
+  }
+
+  function hasBracketSections(text: string): boolean {
+    return /^\s*\[[^\]]+\]\s*$/m.test(text);
+  }
+
+  function escapeAttrValue(value: string): string {
+    return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  }
+
+  function buildMdxBodyFromBracketSections(params: {
+    body: string;
+    structure: string[];
+    sections: Array<{ name: string; chords?: string[] }>;
+  }): string {
+    const { body, structure, sections } = params;
+    const lines = body.replace(/\r\n/g, '\n').split('\n');
+
+    const sectionMap = new Map(sections.map((s) => [normalizeSectionName(s.name), s]));
+    const structureNorm = structure.map((s) => normalizeSectionName(s));
+
+    let cursor = -1;
+    const out: string[] = [];
+
+    for (const line of lines) {
+      const match = line.match(/^\s*\[([^\]]+)\]\s*$/);
+      if (!match) {
+        out.push(line);
+        continue;
+      }
+
+      const name = normalizeSectionName(match[1] ?? '');
+      if (!name) continue;
+
+      let idx = structureNorm.findIndex((s, i) => i > cursor && s === name);
+      if (idx === -1) {
+        idx = cursor + 1;
+      }
+      cursor = idx;
+
+      const chords = sectionMap.get(name)?.chords ?? [];
+      const chordsAttr = chords.length > 0 ? ` chords={${JSON.stringify(chords)}}` : '';
+
+      out.push(
+        `<LyricsSectionHeader name="${escapeAttrValue(name)}" index={${idx}}${chordsAttr} />`
+      );
+    }
+
+    const content = out.join('\n').trim();
+    return `import LyricsSectionHeader from \"../../components/songs/LyricsSectionHeader.astro\";\n\n${content}\n`;
+  }
+
   /**
    * Collects FormData, builds the typed payload, and calls the `createSong`
    * Astro action. Reloads the page on success so the new entry appears in the
@@ -386,6 +440,14 @@ const initialBody          = initial?.body          ?? '';
         themes:              JSON.parse(rawData.themes as string || '[]'),
         body:                rawData.body ? rawData.body as string : undefined,
       };
+
+      if (payload.body && hasBracketSections(payload.body)) {
+        payload.body = buildMdxBodyFromBracketSections({
+          body: payload.body,
+          structure: payload.structure,
+          sections: payload.sections,
+        });
+      }
 
       const { data, error } = await actions.createSong(payload);
 
