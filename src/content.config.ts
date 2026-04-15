@@ -1,5 +1,6 @@
-import { defineCollection, reference, z, type SchemaContext } from "astro:content";
+import { defineCollection, reference, type SchemaContext } from "astro:content";
 import { glob } from "astro/loaders";
+import { z } from "astro/zod";
 
 /**
  * Refer to ./content.config.md for architectural overview.

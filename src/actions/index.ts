@@ -1,11 +1,11 @@
 import { defineAction } from 'astro:actions';
-import { z } from 'astro:content';
 import { SongService } from '../services/songs/SongService';
 import { ChordService } from '../services/chords/ChordService';
 import { WritingService } from '../services/writings/WritingService';
 import { ReviewService } from '../services/reviews/ReviewService';
 import { ActorService } from '../services/actors/ActorService';
 import { searchTMDB } from '../utils/infra/tmdb';
+import { z } from 'astro/zod';  
 
 export const server = {
   // ---------------------------------------------------------------------------

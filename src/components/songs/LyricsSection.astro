@@ -1,0 +1,338 @@
+---
+/**
+ * LyricsSection.astro
+ *
+ * Renders one SectionOccurrence — a named section of a song (e.g. "Verse")
+ * with its chord sheet and lyrics.
+ *
+ * A section may contain multiple slices if the author split it across bar
+ * ranges in the body text (e.g. [verse:1-8] … [verse:9-16]). Each slice
+ * renders its own chord row grid above its own lyric stanzas, all grouped
+ * under a single collapsible <details> header.
+ *
+ * The chord sheet defaults closed. Clicking the summary toggles it open,
+ * revealing the grid. Each row is 4 chords wide (= 4 bars per line).
+ * Bar numbers appear in the left gutter for orientation.
+ */
+
+import { sliceChords } from '../../utils/parseLyrics';
+
+interface Slice {
+  barStart: number | null;
+  barEnd: number | null;
+  lyrics: string;
+}
+
+interface Section {
+  chords: string[];
+  bars: number;
+  repeats: number;
+}
+
+interface Props {
+  /** Normalised section name e.g. "verse", "pre-chorus" */
+  name: string;
+  /** Document-order index of this occurrence — used for anchor id */
+  documentIndex: number;
+  /** Section definition from frontmatter — single source of truth */
+  section: Section;
+  /** One or more lyric slices for this occurrence */
+  slices: Slice[];
+}
+
+const { name, documentIndex, section, slices } = Astro.props;
+
+const id          = `${name}-${documentIndex}`;
+const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+const { chords, bars, repeats } = section;
+
+/**
+ * Splits a flat chord array into rows of `chordsPerRow` for grid rendering.
+ * Each row = one bar line in a lead sheet.
+ *
+ * @param chords       - Chord array to chunk
+ * @param chordsPerRow - Chords per row (default 4)
+ */
+function chunkChords(chords: string[], chordsPerRow = 4): string[][] {
+  const rows: string[][] = [];
+  for (let i = 0; i < chords.length; i += chordsPerRow) {
+    rows.push(chords.slice(i, i + chordsPerRow));
+  }
+  return rows;
+}
+
+/**
+ * Expands the chord array by the repeats count to get the full progression.
+ *
+ * @param baseChords - The chord array for one occurrence of the section
+ * @param repeats - How many times the section repeats
+ * @returns The expanded chord array
+ */
+function expandChordsByRepeats(baseChords: string[], repeats: number): string[] {
+  const expanded: string[] = [];
+  for (let i = 0; i < repeats; i++) {
+    expanded.push(...baseChords);
+  }
+  return expanded;
+}
+
+/**
+ * Resolves which chords to display for a given slice.
+ * First expands the chord array by repeats, then applies bar range slicing if specified.
+ * If no range (null), returns the full expanded chord array.
+ *
+ * @param slice - The LyricSlice being rendered
+ */
+function chordsForSlice(slice: Slice): string[] {
+  const expandedChords = expandChordsByRepeats(chords, repeats);
+
+  if (slice.barStart != null && slice.barEnd != null) {
+    return sliceChords(expandedChords, slice.barStart, slice.barEnd);
+  }
+  return expandedChords;
+}
+
+/**
+ * Returns the bar number for the leftmost cell in a given chord row,
+ * accounting for which bar this slice starts from.
+ *
+ * @param rowIndex      - 0-based row index within this slice's chord grid
+ * @param sliceBarStart - The 1-based bar number this slice starts from (or null)
+ */
+function barLabel(rowIndex: number, sliceBarStart: number | null): number {
+  const base = sliceBarStart ?? 1;
+  return base + rowIndex * 4;
+}
+---
+
+<section class="lyrics-section" id={id}>
+
+  <!-- ── Section header with toggle button ─────────────────────────────────── -->
+  <div class="section-header">
+    <button class="section-toggle" aria-label={`${displayName} chord sheet`}>
+      <span class="section-title">{displayName}</span>
+      <span class="section-meta">
+        {repeats > 1 && (
+          <span class="repeat-badge" title={`Repeats ${repeats} times`}>
+            ×{repeats}
+          </span>
+        )}
+        <span class="bars-badge">{bars} bars</span>
+      </span>
+      <span class="toggle-icon">▶</span>
+    </button>
+  </div>
+
+  <!-- ── Chord grids (hidden by default, positioned above lyrics) ───────────── -->
+  {slices.map((slice, sliceIndex) => {
+    const sliceChordList = chordsForSlice(slice);
+    const rows           = chunkChords(sliceChordList);
+
+    return (
+      <div class="slice-chords chords-hidden" data-slice-index={sliceIndex}>
+        {rows.map((row, rowIndex) => (
+          <div class="chord-row">
+            <span class="bar-number" aria-hidden="true">
+              {barLabel(rowIndex, slice.barStart)}
+            </span>
+            {row.map((chord) => (
+              <span class="chord-cell">{chord}</span>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  })}
+
+  <!-- ── Lyrics (always visible) ───────────────────────────────────────────── -->
+  {slices.map((slice, sliceIndex) => (
+    <div class="lyric-slice" data-slice-index={sliceIndex}>
+      {slice.lyrics.split('\n\n').map((stanza) => (
+        <p class="stanza">{stanza.trim()}</p>
+      ))}
+    </div>
+  ))}
+
+  <script define:vars={{ sectionId: id }}>
+    // Move chord grids to appear above their corresponding lyric slices
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    const chordGrids = section.querySelectorAll('.slice-chords');
+    const lyricSlices = section.querySelectorAll('.lyric-slice');
+    const toggleBtn = section.querySelector('.section-toggle');
+
+    chordGrids.forEach((chordGrid, index) => {
+      const targetLyric = lyricSlices[index];
+      if (targetLyric) {
+        targetLyric.parentNode?.insertBefore(chordGrid, targetLyric);
+      }
+    });
+
+    // Toggle chord visibility
+    toggleBtn?.addEventListener('click', () => {
+      chordGrids.forEach((grid) => {
+        grid.classList.toggle('chords-hidden');
+      });
+      toggleBtn.classList.toggle('is-open');
+    });
+  </script>
+
+</section>
+
+<style>
+  .lyrics-section {
+    margin: var(--space-10) 0 var(--space-6) 0;
+    scroll-margin-top: var(--space-8);
+  }
+
+  /* ── Section header with toggle button ───────────────────────────────────── */
+
+  .section-header {
+    margin-bottom: var(--space-4);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: var(--space-3);
+  }
+
+  .section-toggle {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    user-select: none;
+    padding: var(--space-1) 0;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+  }
+
+  .toggle-icon {
+    font-size: 0.55em;
+    color: var(--text-muted);
+    margin-left: auto;
+    transition: transform 0.2s ease;
+  }
+
+  .section-toggle.is-open .toggle-icon {
+    transform: rotate(90deg);
+  }
+
+  .section-toggle:hover .section-title {
+    background: var(--accent);
+    color: var(--text-on-accent);
+  }
+
+  /* ── Section header content ───────────────────────────────────────────────── */
+
+  .section-title {
+    font-size: var(--text-sm);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    background: var(--bg-secondary);
+    padding: 2px 10px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .section-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .repeat-badge {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .bars-badge {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  /* ── Chord grid (hidden by default, moved by script) ─────────────────────── */
+
+  .slice-chords {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+
+  .slice-chords.chords-hidden {
+    display: none;
+  }
+
+  .chord-row {
+    display: grid;
+    grid-template-columns: 2rem repeat(4, 1fr);
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .bar-number {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    text-align: right;
+    padding-right: var(--space-1);
+    opacity: 0.5;
+  }
+
+  .chord-cell {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+    font-weight: 600;
+    text-align: center;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+  }
+
+  .chord-row .chord-cell:first-of-type {
+    border-left-color: var(--accent);
+  }
+
+  /* ── Lyric slice (always visible) ─────────────────────────────────────────── */
+
+  .lyric-slice {
+    border-left: 2px solid var(--border);
+    padding-left: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .lyric-slice:last-child {
+    margin-bottom: 0;
+  }
+
+  .stanza {
+    font-size: var(--text-lg);
+    line-height: 1.6;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    margin: 0 0 var(--space-5) 0;
+  }
+
+  .stanza:last-child { margin-bottom: 0; }
+
+  /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+  @media (max-width: 480px) {
+    .chord-row {
+      grid-template-columns: 2rem repeat(2, 1fr);
+    }
+
+    .bars-badge {
+      display: none;
+    }
+  }
+</style>

@@ -1,15 +1,18 @@
 ---
-import { getCollection, render } from "astro:content";
-import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
+import { getCollection } from "astro:content";
+import type { GetStaticPaths } from "astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import ChordVoicingsSection from "../../components/songs/ChordVoicingsSection.astro";
 import SongStructureSection from "../../components/songs/SongStructureSection.astro";
 import SongSectionDetails from "../../components/songs/SongSectionDetails.astro";
+import LyricsSection from "../../components/songs/LyricsSection.astro";
+import { parseLyrics } from "../../utils/parseLyrics";
+import type { ParsedBlock } from "../../utils/parseLyrics";
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const songs = await getCollection("songs");
   return songs.map((entry) => ({
-    params: { slug: entry.id }, 
+    params: { slug: entry.id },
     props: { entry },
   }));
 };
@@ -19,37 +22,57 @@ interface Props {
 }
 
 const { entry } = Astro.props as Props;
-const { data } = entry;
-const { Content } = await render(entry);
+const { data, body } = entry;
 
-// Also fetch chords to resolve references
 const allChords = await getCollection("chords");
-const chordMap = new Map(allChords.map(chord => [chord.id, chord]));
+const chordMap = new Map(allChords.map((chord) => [chord.id, chord]));
 
-// Helper to format key signature
-function formatKey(keyRoot: string, keyMode: string) {
-  const modeSymbol = keyMode === 'minor' ? 'm' : '';
-  return `${keyRoot}${modeSymbol}`;
+/**
+ * Builds a lookup map from section name → section definition,
+ * using the frontmatter sections array as the single source of truth.
+ */
+const sectionMap = new Map((data.sections ?? []).map((s: any) => [s.name, s]));
+
+/**
+ * Parses the raw body into blocks. Each SectionOccurrence is enriched
+ * with its matching section definition from the frontmatter sectionMap.
+ */
+const parsedBlocks: ParsedBlock[] = parseLyrics(body ?? "");
+
+/**
+ * True if the body contains any [section] markers.
+ * Determines whether to render structured lyrics or plain prose fallback.
+ */
+const hasStructuredLyrics = parsedBlocks.some((b) => !("kind" in b));
+
+/** @returns "Dm" for minor, "D" for major */
+function formatKey(keyRoot: string, keyMode: string): string {
+  return `${keyRoot}${keyMode === "minor" ? "m" : ""}`;
 }
 
-// Helper to format time signature
-function formatTimeSignature(top: number, bottom: number) {
+function formatTimeSignature(top: number, bottom: number): string {
   return `${top}/${bottom}`;
 }
 
-// Helper to get key color
-function getKeyColor(keyMode: string) {
-  return keyMode === 'minor' ? 'var(--key-minor)' : 'var(--key-major)';
+function getKeyColor(keyMode: string): string {
+  return keyMode === "minor" ? "var(--key-minor)" : "var(--key-major)";
 }
 
-// Helper to calculate total bars
-function calculateTotalBars(sections: any[], structure: string[]) {
-  const sectionMap = new Map(sections.map((s: any) => [s.name, s]));
-  return structure.reduce((total: number, sectionName: string) => {
-    const section = sectionMap.get(sectionName);
-    return total + (section ? section.bars * section.repeats : 0);
+/**
+ * Calculates total bars across the full song structure, accounting for repeats.
+ *
+ * @param sections  - The data.sections array from frontmatter
+ * @param structure - The data.structure array (ordered section names)
+ */
+function calculateTotalBars(sections: any[], structure: string[]): number {
+  const map = new Map(sections.map((s: any) => [s.name, s]));
+  return structure.reduce((total: number, name: string) => {
+    const s = map.get(name);
+    return total + (s ? s.bars * (s.repeats ?? 1) : 0);
   }, 0);
 }
+
+const totalBars = calculateTotalBars(data.sections ?? [], data.structure ?? []);
 ---
 
 <BaseLayout
@@ -85,8 +108,8 @@ function calculateTotalBars(sections: any[], structure: string[]) {
           )}
           
           <div class="meta-item">
-            <span class="meta-label">Chord Voicings</span>
-            <span class="meta-value">{data.chordVoicings.length}</span>
+            <span class="meta-label">Total bars</span>
+            <span class="meta-value">{totalBars}</span>
           </div>
           
           {data.album && 'data' in data.album && data.album.data?.title && (
@@ -112,10 +135,29 @@ function calculateTotalBars(sections: any[], structure: string[]) {
 
     <SongSectionDetails sections={data.sections} />
 
-    <section class="song-content">
-      <div class="content-body">
-        <Content />
-      </div>
+    <!-- ── Lyrics ──────────────────────────────────────────────────────────── -->
+    <section class="song-lyrics">
+      {hasStructuredLyrics
+        ? parsedBlocks.map((block: ParsedBlock) => {
+            if ("kind" in block) {
+              return block.lyrics ? <p class="song-preamble">{block.lyrics}</p> : null;
+            }
+
+            const section = sectionMap.get(block.sectionName) as any;
+            if (!section) return null;
+
+            return (
+              <LyricsSection
+                name={block.sectionName}
+                documentIndex={block.documentIndex}
+                section={section}
+                slices={block.slices}
+              />
+            );
+          })
+        : (body ?? "").split("\n\n").map((para: string) => (
+            <p class="plain-body-para">{para.trim()}</p>
+          ))}
     </section>
   </article>
 </BaseLayout>
@@ -141,7 +183,7 @@ function calculateTotalBars(sections: any[], structure: string[]) {
 
   .song-meta {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: var(--space-4);
   }
 
@@ -171,11 +213,31 @@ function calculateTotalBars(sections: any[], structure: string[]) {
     border-radius: var(--radius-sm);
     font-family: var(--font-mono);
     font-weight: 700;
+    display: inline-block;
   }
 
-  .chord-voicings,
-  .song-content {
-    margin-bottom: var(--space-8);
+  .song-lyrics {
+    margin-top: var(--space-8);
+  }
+
+  .song-preamble {
+    font-size: var(--text-lg);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-6);
+    white-space: pre-wrap;
+  }
+
+  .plain-body-para {
+    font-size: var(--text-lg);
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-4);
+    white-space: pre-wrap;
+  }
+
+  :root {
+    --key-major: #3b82f6;
+    --key-minor: #ef4444;
   }
 
   .chord-voicings h2,
@@ -186,75 +248,9 @@ function calculateTotalBars(sections: any[], structure: string[]) {
     color: var(--text-primary);
   }
 
-  .chord-voicings {
-    margin-bottom: var(--space-8);
-  }
-
-  .chord-voicings h2 {
-    font-size: var(--text-2xl);
-    font-weight: 700;
-    margin: 0 0 var(--space-4) 0;
-    color: var(--text-primary);
-  }
-
-  .chord-diagrams-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--space-6);
-  }
-
-  .chord-diagram-wrapper {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    text-align: center;
-    transition: all var(--transition-fast);
-  }
-
-  .chord-ref:hover {
-    border-color: var(--accent);
-    background: var(--bg-card-hover);
-  }
-
-  .content-body {
-    font-size: var(--text-lg);
-    line-height: 1.4;
-    color: var(--text-secondary);
-    white-space: pre-wrap;
-  }
-
-  .content-body :is(h1, h2, h3, h4, h5, h6) {
-    color: var(--text-primary);
-    /* margin-top: var(--space-6);
-    margin-bottom: var(--space-3); */
-  }
-
-  .content-body p {
-    margin-bottom: 0;
-  }
-
-  /* Song-specific CSS variables */
-  :root {
-    --key-major: #3b82f6;
-    --key-minor: #ef4444;
-  }
-
   @media (max-width: 768px) {
-    .song-detail {
-      padding: var(--space-6) 0;
-    }
-
-    .song-title {
-      font-size: var(--text-3xl);
-    }
-
-    .song-meta {
-      grid-template-columns: 1fr;
-    }
-
-    .chord-grid {
-      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    }
+    .song-detail  { padding: var(--space-6) 0; }
+    .song-title   { font-size: var(--text-3xl); }
+    .song-meta    { grid-template-columns: 1fr; }
   }
 </style>
