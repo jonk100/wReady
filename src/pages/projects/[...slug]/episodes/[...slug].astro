@@ -71,25 +71,17 @@ const sortedScenes = episodeScenes.sort((a, b) => a.data.sceneNumber - b.data.sc
 const scenesWithCharacters = await Promise.all(
   sortedScenes.map(async (scene) => {
     let characters: any[] = [];
-    try {
-      if (scene.data.characters && scene.data.characters.length > 0) {
-        characters = await Promise.all(
-          scene.data.characters.map((charRef) => getEntry(charRef))
-        );
-      }
-    } catch (error) {
-      console.warn(`Could not load characters for scene ${scene.id}:`, error);
+    if (scene.data.characters && scene.data.characters.length > 0) {
+      characters = (await Promise.all(
+        scene.data.characters.map((charRef) => getEntry(charRef).catch(() => null))
+      )).filter(Boolean);
     }
 
     let location: any[] = [];
-    try {
-      if (scene.data.location && scene.data.location.length > 0) {
-        location = await Promise.all(
-          scene.data.location.map((locRef) => getEntry(locRef))
-        );
-      }
-    } catch (error) {
-      console.warn(`Could not load location for scene ${scene.id}:`, error);
+    if (scene.data.location && scene.data.location.length > 0) {
+      location = (await Promise.all(
+        scene.data.location.map((locRef) => getEntry(locRef).catch(() => null))
+      )).filter(Boolean);
     }
 
     const { Content } = await render(scene);
