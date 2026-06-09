@@ -49,18 +49,18 @@ try {
 }
 
 /**
- * Resolve character references
+ * Resolve character references (filter out missing entries)
  */
-const characters = await Promise.all(
-  scene.data.characters.map((charRef) => getEntry(charRef))
-);
+const characters = (await Promise.all(
+  scene.data.characters.map((charRef) => getEntry(charRef).catch(() => null))
+)).filter(Boolean);
 
 /**
- * Resolve location references
+ * Resolve location references (filter out missing entries)
  */
-const location = await Promise.all(
-  scene.data.location.map((locRef) => getEntry(locRef))
-);
+const location = (await Promise.all(
+  scene.data.location.map((locRef) => getEntry(locRef).catch(() => null))
+)).filter(Boolean);
 
 /**
  * Resolve episode reference to get episode number
