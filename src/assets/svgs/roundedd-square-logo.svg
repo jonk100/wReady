@@ -1,0 +1,35 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 256 256"
+  fill="none"
+>
+  <rect
+    x="24"
+    y="24"
+    width="208"
+    height="208"
+    rx="32"
+    fill="currentColor"
+  />
+
+  <path
+    d="M72 80
+       L96 176
+       L128 112
+       L160 176
+       L184 80"
+    stroke="white"
+    stroke-width="20"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <path
+    d="M180 24
+       L232 76
+       L232 24
+       Z"
+    fill="white"
+    opacity=".18"
+  />
+</svg>

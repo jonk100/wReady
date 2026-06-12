@@ -1,0 +1,159 @@
+---
+const { headings } = Astro.props;
+
+// Ensure each heading has id, text, level
+// If not, generate 'id' from text
+const slug = (text) =>
+  text
+    .toString()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+
+const tocHeadings = headings.map(h => ({
+  id: slug(h.text),
+  text: h.text,
+  level: h.level,
+}));
+---
+
+<style>
+  .toc-container {
+    position: sticky;
+    bottom: 0;
+    margin: 0 auto;
+    overflow-y:hidden;
+    padding: 1rem;
+    background: rgba(var(--bg-raised-rgb), 0.25);
+  }
+
+  /* .toc-container:hover {
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+  } */
+
+  .toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: var(--text-base-flat);
+    
+  }
+
+  .toc-item {
+    margin:  0.1rem 0;
+    padding: 0.3rem;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.3s;
+    border: 1px solid var(--border);
+    border-radius: 50px 0 0 50px;
+    color: var(--text-secondary);
+    padding-left: 1rem;
+  }
+
+  /* Indent based on heading level */
+  .level-1 { padding-left: 0; }
+  .level-2 { padding-left: 1rem; }
+  .level-3 { padding-left: 2rem; }
+
+  .toc-item:hover {
+    background-color: rgba(var(--accent-dim-rgb), 0.3);
+    transform: translateX(2px);
+  }
+
+  .toc-item.active {
+    background-color: rgba(var(--accent-rgb), 0.15);
+    color: var(--text-highlight);
+    letter-spacing: 0.025em;
+    border-left: 1px solid var(--bg);
+    border-bottom: 4px solid rgba(var(--accent-rgb), 0.35);
+    border-bottom: 3px solid var(--bg);
+↓   border-top: 4px solid rgba(var(--accent-rgb), 0.35);
+    border-top: 3px solid var(--bg);
+    border-right: 3px solid var(--accent);
+    outline: 1px solid var(--bg);
+    outline-offset: -2px;
+    /* border-radius: 0; */
+    padding-left: 1.5rem;
+    padding-right: 0;
+  }
+
+  a.toc-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  li {
+    line-height: 1.5;
+  }
+
+  .toc-title {
+    background: rgba(var(--bg-raised-rgb), 0.2);
+    /* text-decoration: double underline; */
+    color: rgba(var(--accent-dim-rgb), 0.7);
+    padding-top: var(--space-4);
+    font-size: var(--text-base-flat);
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-right: 1px solid var(--border);
+  }
+</style>
+
+<div class="toc-container">
+
+  <h2 class="toc-title">Contents</h2>
+  <ul class="toc-list" id="tocList">
+    {tocHeadings.map(h => (
+      <li class={`toc-item level-${h.level}`} data-id={h.id}>
+        <a href={`#${h.id}`} class="toc-link">{h.text}</a>
+      </li>
+    ))}
+  </ul>
+</div>
+
+<script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", () => {
+    const tocItems = document.querySelectorAll('.toc-item');
+    
+    // Map TOC items to actual heading elements by finding them in the DOM
+    const sections = Array.from(tocItems).map(item => {
+      const text = item.textContent?.trim() || '';
+      // Find the first heading in the document that matches this text
+      const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      return Array.from(allHeadings).find(h => h.textContent?.trim() === text);
+    });
+
+    const highlightCurrent = () => {
+      let index = sections.length;
+      while (--index && window.scrollY + 250 < (sections[index]?.offsetTop ?? 0)) {}
+      tocItems.forEach((item, idx) => {
+        item.classList.toggle('active', idx === index);
+      });
+    };
+
+    // initial highlight
+    highlightCurrent();
+
+    window.addEventListener('scroll', highlightCurrent);
+
+    // click smooth scroll
+    tocItems.forEach(item => {
+      const link = item.querySelector('a');
+      if (link) {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const text = item.textContent?.trim() || '';
+          const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+          const targetSection = Array.from(allHeadings).find(h => h.textContent?.trim() === text);
+          if (targetSection) {
+            targetSection.scrollIntoView({ behavior: 'smooth' });
+          }
+        });
+      }
+    });
+  });
+</script>

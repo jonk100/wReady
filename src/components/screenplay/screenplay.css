@@ -1,13 +1,12 @@
-/**
+/* *
  * Standard screenplay layout
  */
 
 .screenplay {
   font-family: "Courier New", Courier, monospace;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-  line-height: 1.5;
+  width: 8.5in;
+  margin: 1in 1in 1in 1.5in;
+  line-height: 13pt;
 }
 
 .screenplay-title {
@@ -17,33 +16,45 @@
 
 /* Scene headings */
 .scene {
-  margin: 2rem 0 1rem;
-  font-weight: bold;
   text-transform: uppercase;
+  font-family: 'Courier New', Courier, monospace;
+  line-height: 1.25;
+  font-size: 12pt;
 }
 
 /* Action */
 .action {
-  margin: 1rem 0;
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  line-height: 1.25;
+  font-size: 12pt;
 }
 
 /* Character names */
-.character {
-  margin-left: 40%;
-  margin-top: 1.5rem;
-  text-transform: uppercase;
-}
+  .character {
+    margin-left: 2.2in;
+    text-transform: uppercase;
+    font-family: 'Courier New', Courier, monospace;
+    line-height: 1.25;
+    font-size: 12pt;
+  }
 
 /* Parentheticals */
 .parenthetical {
-  margin-left: 35%;
-  font-style: italic;
+  margin-left: 1.6in;
+  max-width: 3in;
+  font-family: 'Courier New', Courier, monospace;
+  line-height: 1.25;
+  font-size: 12pt;
 }
 
 /* Dialogue */
 .dialogue {
-  margin-left: 30%;
-  max-width: 40%;
+  margin-left: 1in;
+  max-width: 3.5in;
+  font-family: 'Courier New', Courier, monospace;
+  line-height: 1.25;
+  font-size: 12pt;
 }
 
 /* Transitions */

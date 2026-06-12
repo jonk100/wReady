@@ -1,0 +1,126 @@
+---
+import { type CollectionEntry } from 'astro:content';
+
+type Props = {
+  prevScene?: CollectionEntry<'scenes'>;
+  nextScene?: CollectionEntry<'scenes'>;
+}
+
+const { prevScene, nextScene } = Astro.props as Props;
+---
+
+<!-- Navigation -->
+{(prevScene || nextScene) && (
+  <div class="scene-navigation">
+    {prevScene && (
+      <a href={`/scenes/${prevScene.id}`} class="nav-btn nav-prev">
+        <span class="nav-arrow">←</span>
+        <span class="nav-label">
+          <span class="nav-number">S{prevScene.data.sceneNumber} - {prevScene.data.title}</span>
+        </span>
+      </a>
+    )}
+    {nextScene && (
+      <a href={`/scenes/${nextScene.id}`} class="nav-btn nav-next">
+        <span class="nav-label">
+          <span class="nav-number">S{nextScene.data.sceneNumber} - {nextScene.data.title}</span>
+        </span>
+        <span class="nav-arrow">→</span>
+      </a>
+    )}
+  </div>
+)}
+
+<style>
+  /* ═══════════════════════════════════════════
+   Scene navigation
+═══════════════════════════════════════════ */
+
+.scene-navigation {
+  position: sticky;
+  top: 4rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(1600px, 100%);
+  margin-inline: auto;
+  z-index: 100;
+  padding: 0rem;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 1rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--accent-subtle);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--accent-light);
+  transition: all 0.2s;
+  max-width: 160px;
+  min-width: 160px;
+}
+
+.nav-btn:hover {
+  background: var(--bg-card);
+  border-color: var(--blue-dark);
+  transition: ease-in-out 0.3s all;
+  
+}
+
+.nav-prev {
+  left: max(2rem, calc((100vw - 1200px) / 2));
+  border-radius: 6px 0 0 6px;
+  border-right: none;
+}
+
+.nav-next {
+  right: max(2rem, calc((100vw - 1200px) / 2));
+  border-radius: 0 6px 6px 0;
+  border-left: none;
+}
+
+.nav-arrow {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--accent-dark);
+}
+
+.nav-btn:hover .nav-arrow {
+  color: var(--accent);
+  transition: linear 0.5s;
+}
+
+.nav-label {
+  display: flex;
+  flex-direction: column;
+  
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: normal;
+  word-break: break-word;
+  text-overflow: clip;
+  color: var(--text-muted);
+}
+
+.nav-number {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.nav-btn:hover .nav-number {
+  color: var(--blue-light);
+  transition: linear 0.2s;
+}
+
+.nav-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+</style>

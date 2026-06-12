@@ -3,6 +3,9 @@ import { getCollection, getEntry } from "astro:content";
 import Layout from "../../../layouts/BaseLayout.astro";
 import CardGrid from "../../../components/CardGrid.astro";
 import { type CollectionEntry } from "astro:content";
+import NewSceneButton from "../../../components/editor/NewSceneButton.astro";
+import NewCharacterButton from "../../../components/editor/NewCharacterButton.astro";
+import NewLocationButton from "../../../components/editor/NewLocationButton.astro";
 
 export async function getStaticPaths() {
   const projects = await getCollection("projects");
@@ -14,25 +17,26 @@ export async function getStaticPaths() {
 }
 
 const { project } = Astro.props;
+const projectSlug = project.id;
 
 // Get counts for each content type
 const episodes = await getCollection("episodes", 
-  (episode) => episode.data.project.id === project.id
+  (episode: CollectionEntry<"episodes">) => episode.data.project.id === project.id
 );
 const scenes = await getCollection("scenes", 
-  (scene) => scene.data.project.id === project.id
+  (scene: CollectionEntry<"scenes">) => scene.data.project.id === project.id
 );
 const plots = await getCollection("plots", 
-  (plot) => plot.data.project.id === project.id
+  (plot: CollectionEntry<"plots">) => plot.data.project.id === project.id
 );
 const beats = await getCollection("beats", 
-  (beat) => beat.data.project.id === project.id
+  (beat: CollectionEntry<"beats">) => beat.data.project.id === project.id
 );
 const characters = await getCollection("characters", 
-  (character) => character.data.project.id === project.id
+  (character: CollectionEntry<"characters">) => character.data.project.id === project.id
 );
 const locations = await getCollection("locations", 
-  (location) => location.data.project.id === project.id
+  (location: CollectionEntry<"locations">) => location.data.project.id === project.id
 );
 
 // Calculate stats
@@ -47,6 +51,11 @@ const plannedEpisodes = project.data.episodeCount || totalEpisodes;
       <p class="page-description">
         Navigate through all content for {project.data.title}. Explore episodes, scenes, plots, characters, and more.
       </p>
+      <div class="action-buttons">
+        <NewSceneButton />
+        <NewCharacterButton />
+        <NewLocationButton />
+      </div>
     </header>
 
     <!-- Series Overview Stats -->
@@ -231,6 +240,14 @@ const plannedEpisodes = project.data.episodeCount || totalEpisodes;
     color: var(--color-text-secondary);
     max-width: 600px;
     margin: 0 auto;
+    margin-bottom: 1.5rem;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
   .series-overview {

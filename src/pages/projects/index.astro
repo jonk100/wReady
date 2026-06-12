@@ -10,11 +10,14 @@
 import { getCollection, type CollectionEntry } from "astro:content";
 import IndexLayout from "../../layouts/IndexLayout.astro";
 import ProjectCard from "../../components/collection-cards/ProjectCard.astro";
+import NewProjectButton from "../../components/editor/NewProjectButton.astro";
 
 const projects = await getCollection("projects");
 
 // Sort alphabetically by title
-const sorted = projects.sort((a, b) => a.data.title.localeCompare(b.data.title));
+const sorted = projects.sort((a: CollectionEntry<"projects">, b: CollectionEntry<"projects">) =>
+  a.data.title.localeCompare(b.data.title)
+);
 ---
 
 <IndexLayout
@@ -22,11 +25,14 @@ const sorted = projects.sort((a, b) => a.data.title.localeCompare(b.data.title))
   count={sorted.length}
   description="Screenplays, films, and books."
 >
+  <div slot="actions">
+    <NewProjectButton />
+  </div>
   {sorted.length === 0 ? (
     <p class="empty">No projects yet.</p>
   ) : (
     <ul class="grid grid--cols-3">
-      {sorted.map((entry) => (
+      {sorted.map((entry: CollectionEntry<"projects">) => (
         <li>
           <ProjectCard entry={entry} />
         </li>

@@ -1,0 +1,77 @@
+---
+/**
+ * CharacterScenes.astro
+ *
+ * Shows how many scenes a character appears in, with an optional filter.
+ * Pass exactly one of: episode, location, sceneStart+sceneEnd.
+ *
+ * @example
+ * <CharacterScenes project="her-majestys-displeasure" character="band/john-lennon" />
+ * <CharacterScenes project="her-majestys-displeasure" character="band/john-lennon" episode="episode-1" />
+ * <CharacterScenes project="her-majestys-displeasure" character="band/john-lennon" sceneStart={1} sceneEnd={16} />
+ */
+
+import { getCollection } from "astro:content";
+import { resolveCharacterId, labelFromId } from "../../../../utils/screenwriting/helpers";
+
+interface Props {
+  project: string;
+  character: string;
+  episode?: string;
+  location?: string;
+  sceneStart?: number;
+  sceneEnd?: number;
+}
+
+const { project, character, episode, location, sceneStart, sceneEnd } = Astro.props;
+
+const characterId = resolveCharacterId(project, character);
+
+let scenes = await getCollection("scenes");
+scenes = scenes.filter((s) => s.data.project.id === project);
+
+if (episode) {
+  scenes = scenes.filter((s) => s.data.episode?.id === `${project}/${episode}`);
+} else if (location) {
+  scenes = scenes.filter((s) =>
+    s.data.location.some((l) => l.id === `${project}/${location}`)
+  );
+} else if (sceneStart !== undefined || sceneEnd !== undefined) {
+  scenes = scenes.filter((s) => {
+    const n = s.data.sceneNumber;
+    const afterStart = sceneStart === undefined || n >= sceneStart;
+    const beforeEnd = sceneEnd === undefined || n <= sceneEnd;
+    return afterStart && beforeEnd;
+  });
+}
+
+const sceneCount = scenes.filter((s) =>
+  s.data.characters.some((c) => c.id === characterId)
+).length;
+
+const totalScenes = (await getCollection("scenes"))
+  .filter(
+    (s) =>
+      s.data.project.id === project &&
+      s.data.characters.some((c) => c.id === characterId)
+  ).length;
+
+const label = labelFromId(characterId);
+const isFiltered = !!(episode || location || sceneStart !== undefined || sceneEnd !== undefined);
+
+let context = "";
+if (episode) context = ` in ${labelFromId(`${project}/${episode}`)}`;
+else if (location) context = ` at ${labelFromId(`${project}/${location}`)}`;
+else if (sceneStart !== undefined && sceneEnd !== undefined)
+  context = ` in scenes ${sceneStart}–${sceneEnd}`;
+else if (sceneStart !== undefined) context = ` from scene ${sceneStart}`;
+else if (sceneEnd !== undefined) context = ` through scene ${sceneEnd}`;
+---
+
+<p>
+  <strong>{label}</strong> appears in <strong>{sceneCount}</strong>
+  {sceneCount === 1 ? "scene" : "scenes"}{context}.
+  {isFiltered && (
+    <span>({totalScenes} total across the project.)</span>
+  )}
+</p>

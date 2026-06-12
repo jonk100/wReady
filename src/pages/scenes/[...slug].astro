@@ -1,5 +1,5 @@
 ---
-import { getCollection, getEntry, render } from "astro:content";
+import { getCollection, getEntry, render, type CollectionEntry } from "astro:content";
 import Layout from "../../layouts/BaseLayout.astro";
 
 import Screenplay from "../../components/screenplay/Screenplay.astro";
@@ -11,6 +11,12 @@ import Parenthetical from "../../components/screenplay/Parenthetical.astro";
 import Transition from "../../components/screenplay/Transition.astro";
 import ActBreak from "../../components/screenplay/ActBreak.astro";
 import Breadcrumb from "../../components/Breadcrumb.astro";
+import PreviousNextScene from "../../components/scenes/PreviousNextScene.astro";
+import MetadataHeader from "../../components/scenes/MetadataHeader.astro";
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import '@/styles/pages/scenes/slug.css';
 
 /**
  * Generate static paths for scenes
@@ -18,7 +24,7 @@ import Breadcrumb from "../../components/Breadcrumb.astro";
 export async function getStaticPaths() {
   const scenes = await getCollection("scenes");
 
-  return scenes.map((scene) => {
+  return scenes.map((scene: CollectionEntry<"scenes">) => {
     const slug = scene.id
       .replace("src/content/scenes/", "")
       .replace(/\.(md|mdx)$/, "");
@@ -32,6 +38,25 @@ export async function getStaticPaths() {
 
 const { scene } = Astro.props;
 const { Content } = await render(scene);
+
+// Get raw markdown content for editor
+const scenePath = join(process.cwd(), "src/content/scenes", `${scene.id}.mdx`);
+let rawContent = "";
+try {
+  rawContent = readFileSync(scenePath, "utf-8");
+} catch (error) {
+  console.error("Could not read scene file:", error);
+}
+
+// Get all scenes for navigation
+const allScenes = await getCollection("scenes");
+const projectScenes = allScenes
+  .filter((s: CollectionEntry<"scenes">) => s.data.project.id === scene.data.project.id)
+  .sort((a: CollectionEntry<"scenes">, b: CollectionEntry<"scenes">) => a.data.sceneNumber - b.data.sceneNumber);
+
+const currentIndex = projectScenes.findIndex((s: CollectionEntry<"scenes">) => s.id === scene.id);
+const prevScene = currentIndex > 0 ? projectScenes[currentIndex - 1] : null;
+const nextScene = currentIndex < projectScenes.length - 1 ? projectScenes[currentIndex + 1] : null;
 
 // Extract project from scene data
 const project = scene.data.project.id || 'unknown';
@@ -51,16 +76,28 @@ try {
 /**
  * Resolve character references (filter out missing entries)
  */
+<<<<<<< Updated upstream
 const characters = (await Promise.all(
   scene.data.characters.map((charRef) => getEntry(charRef).catch(() => null))
 )).filter(Boolean);
+=======
+const characters = await Promise.all(
+  scene.data.characters.map((charRef: any) => getEntry(charRef))
+);
+>>>>>>> Stashed changes
 
 /**
  * Resolve location references (filter out missing entries)
  */
+<<<<<<< Updated upstream
 const location = (await Promise.all(
   scene.data.location.map((locRef) => getEntry(locRef).catch(() => null))
 )).filter(Boolean);
+=======
+const location = await Promise.all(
+  scene.data.location.map((locRef: any) => getEntry(locRef))
+);
+>>>>>>> Stashed changes
 
 /**
  * Resolve episode reference to get episode number
@@ -80,192 +117,364 @@ if (scene.data.episode) {
 
 <Layout title={`${scene.data.title} - Scenes`}>
   <div class="container">
-    <Breadcrumb 
+    <Breadcrumb
       items={[
         { label: projectTitle, href: `/projects/${project}` },
         { label: "Scenes", href: `/projects/${project}/scenes` },
         { label: scene.data.title }
-      ]} 
+      ]}
     />
     
-    <div class="header">
-      <h1>{scene.data.title}</h1>
+    <MetadataHeader
+      scene={scene}
+      episodeNumber={episodeNumber}
+      episodeFilterValue={episodeFilterValue}
+      location={location}
+      project={project}
+      characters={characters}
+    />
 
-      <div class="meta">
-        {episodeNumber && episodeFilterValue && (
-          <a href={`/projects/${project}/scenes?episode=${encodeURIComponent(episodeFilterValue)}`} class="episode">
-            E{episodeNumber}
-          </a>
-        )}
-        <span class="scene-num">S{scene.data.sceneNumber}</span>
+    <!-- Navigation -->
+    <PreviousNextScene nextScene={nextScene} prevScene={prevScene} />
 
-        <span class="int-ext">{scene.data.intOrExt}</span>
-
-        {location && location.length > 0 && (
-          <a href={`/locations/${location[0].id}`} class="location">
-            {location.map((loc) => loc.data.name).join(", ")}
-          </a>
-        )}
-
-        <span class="time">{scene.data.timeOfDay}</span>
-
-        {characters && characters.length > 0 && (
-          <details class="characters-dropdown">
-            <summary class="characters-toggle">Characters</summary>
-
-            <div class="character-list">
-              {characters.map((character) => (
-                <a href={`/characters/${character.id}`} class="character-link">
-                  {character?.data.name}
-                </a>
-              ))}
+    <!-- Editor/Preview Container -->
+    <div class="editor-preview-wrapper" id="editor-preview-wrapper">
+      <!-- Shared Header (shown when editing) -->
+      <div class="editor-shared-header" id="editor-shared-header" style="display: none;">
+        <div class="editor-header-content">
+          <h3>Edit Scene</h3>
+          <div class="editor-actions">
+            <button class="btn-save" id="btn-save" type="button">Save Changes</button>
+            <button class="btn-cancel" id="btn-cancel" type="button">Cancel</button>
+          </div>
+        </div>
+        
+        <div class="editor-hints">
+          <details>
+            <summary>Screenplay Format Guide</summary>
+            <div class="hints-content">
+              <h4>Shorthand Syntax:</h4>
+              <ul>
+                <li><code>s-</code> or <code>scene-</code> → Scene heading (INT./EXT.)</li>
+                <li><code>a-</code> or <code>action-</code> → Action/description</li>
+                <li><code>c-</code> or <code>character-</code> → Character name</li>
+                <li><code>d-</code> or <code>dialogue-</code> → Dialogue</li>
+                <li><code>p-</code> or <code>parenthetical-</code> → Parenthetical</li>
+                <li><code>t-</code> or <code>transition-</code> → Transition</li>
+              </ul>
+              <h4>Implicit Format (in scene files):</h4>
+              <ul>
+                <li><strong>ALL CAPS</strong> → Character name</li>
+                <li><strong>(text in parens)</strong> → Parenthetical</li>
+                <li><strong>INT./EXT.</strong> → Scene heading</li>
+              </ul>
             </div>
           </details>
-        )}
+        </div>
       </div>
-    </div>
 
-    <div class="content markdown">
-      <div class="screenplay-root">
-        <Content
-          components={{
-            Screenplay,
-            Scene,
-            Action,
-            Character,
-            Dialogue,
-            Parenthetical,
-            Transition,
-            ActBreak,
-          }}
-        />
+      <!-- Side-by-side Editor and Preview -->
+      <div class="editor-preview-container" id="editor-preview-container">
+        <!-- Editor Panel (hidden by default) -->
+        <div class="editor-panel" id="editor-panel" style="display: none;">
+          <textarea class="editor-textarea" id="editor-textarea" spellcheck="false">{rawContent}</textarea>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="preview-panel" id="preview-panel">
+          <div class="content">
+            <div class="screenplay-page" id="screenplay-preview">
+              <Content
+                components={{
+                  Screenplay,
+                  Scene,
+                  Action,
+                  Character,
+                  Dialogue,
+                  Parenthetical,
+                  Transition,
+                  ActBreak,
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </Layout>
+<script>
+  import {
+  countFrontmatterLines,
+  renderScreenplay,
+  getPreviewElementForLine,
+  getCaretCoords,
+} from '../../utils/editor/sceneEditor';
 
-<style>
-  .container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
+  document.addEventListener('DOMContentLoaded', () => {
+    /* ── Element refs ── */
+    const editBtn       = document.getElementById('edit-scene-btn') as HTMLButtonElement | null;
+    const editorPanel   = document.getElementById('editor-panel') as HTMLDivElement | null;
+    const textarea      = document.getElementById('editor-textarea') as HTMLTextAreaElement | null;
+    const previewEl     = document.getElementById('screenplay-preview') as HTMLDivElement | null;
+    const container     = document.getElementById('editor-preview-container') as HTMLDivElement | null;
+    const sharedHeader  = document.getElementById('editor-shared-header') as HTMLDivElement | null;
+    const previewPanel  = document.getElementById('preview-panel') as HTMLDivElement | null;
+    const saveBtn       = document.getElementById('btn-save') as HTMLButtonElement | null;
+    const cancelBtn     = document.getElementById('btn-cancel') as HTMLButtonElement | null;
+    // Store original parent before any DOM moves — add this near the top with your other refs
 
-  .header {
-    position: relative; /* anchor dropdown */
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid #eee;
-  }
+    const wrapper = document.getElementById('editor-preview-wrapper') as HTMLDivElement;
+    const wrapperOriginalParent = wrapper.parentElement!;
+    const wrapperNextSibling = wrapper.nextElementSibling;
 
-  .header h1 {
-    margin: 0 0 1rem 0;
-  }
+    console.log({ editBtn, editorPanel, textarea, previewEl, container, sharedHeader, previewPanel, saveBtn, cancelBtn, wrapper });
+    // add to your null check:
+    if (!editBtn || !editorPanel || !textarea || !previewEl ||
+        !container || !sharedHeader || !previewPanel || !saveBtn || !cancelBtn || !wrapper) return;
 
-  .meta {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
+    textarea.addEventListener('wheel', (e: WheelEvent) => {
+      e.preventDefault();
+      textarea.scrollTop += e.deltaY;
+    }, { passive: false });
 
-  .episode,
-  .scene-num,
-  .int-ext,
-  .location,
-  .time,
-  .characters-toggle,
-  .character-link {
-    background: #f0f0f0;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    font-weight: bold;
-  }
+    let syncingScroll = false;
 
-  .episode {
-    background: #bbddf3;
-    color: #1a5a8a;
-    text-decoration: none;
-  }
+    previewPanel.addEventListener('scroll', () => {
+      if (syncingScroll) return;
+      syncingScroll = true;
+      const ratio = previewPanel.scrollTop / (previewPanel.scrollHeight - previewPanel.clientHeight);
+      textarea.scrollTop = ratio * (textarea.scrollHeight - textarea.clientHeight);
+      syncingScroll = false;
+    });
 
-  .episode:hover {
-    background: #a8c8e0;
-    text-decoration: underline;
-  }
+    textarea.addEventListener('scroll', () => {
+      if (syncingScroll) return;
+      syncingScroll = true;
+      const ratio = textarea.scrollTop / (textarea.scrollHeight - textarea.clientHeight);
+      previewPanel.scrollTop = ratio * (previewPanel.scrollHeight - previewPanel.clientHeight);
+      syncingScroll = false;
+    });
 
-  .scene-num {
-    background: #e8f5e8;
-    color: #2e7d32;
-  }
+    /**
+     * Highlight a preview element briefly to show the current cursor position.
+     * Removes any existing highlight first.
+     *
+     * @param {Element | null} el - The element to highlight
+     */
+    function highlightPreviewElement(el: Element | null): void {
+      // Remove previous highlight
+      previewEl!.querySelector('.preview-highlight')?.classList.remove('preview-highlight');
+      if (el) el.classList.add('preview-highlight');
+    }
 
-  .int-ext {
-    background: #fff3e0;
-    color: #e65100;
-  }
+    /**
+     * Scroll the preview panel so the highlighted element is visible,
+     * positioned roughly in the upper third of the panel.
+     *
+     * @param {Element | null} el - The element to scroll into view
+     */
+    function scrollPreviewToElement(el: Element | null): void {
+      if (!el) return;
+      const panelRect = previewPanel!.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const offset = elRect.top - panelRect.top;
+      const target = previewPanel!.scrollTop + offset - panelRect.height * 0.25;
+      previewPanel!.scrollTop = target;
+    }
 
-  .location {
-    background: #e3f2fd;
-    color: #1976d2;
-    text-decoration: none;
-  }
+    // Sync preview position to cursor on keyup and click
+    function onCursorMove(): void {
+      const raw = textarea!.value;
+      const cursorPos = textarea!.selectionStart;
+      const cursorLine = raw.slice(0, cursorPos).split('\n').length - 1;
+      const el = getPreviewElementForLine(cursorLine, raw, previewEl!);
+      highlightPreviewElement(el);
+      scrollPreviewToElement(el);
+    }
 
-  .time {
-    background: #f3e5f5;
-    color: #7b1fa2;
-  }
+    textarea.addEventListener('keyup', onCursorMove);
+    textarea.addEventListener('click', onCursorMove);
+    textarea.addEventListener('keydown', onCursorMove);
 
-  /* Characters toggle (inline, same as pills) */
-  .characters-dropdown {
-    position: static;
-  }
+    let isEditing = false;
 
-  .characters-toggle {
-    list-style: none;
-    cursor: pointer;
-    color: #444;
-  }
+    /* ── Resize handle (injected once) ── */
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    resizeHandle.setAttribute('aria-hidden', 'true');
 
-  .characters-toggle::-webkit-details-marker {
-    display: none;
-  }
+    /* ── Shared scroll wrapper (injected once) ── */
+    const scrollSync = document.createElement('div');
+    scrollSync.className = 'editor-scroll-sync';
 
-  .characters-dropdown[open] .characters-toggle {
-    background: #e0e0e0;
-  }
+    textarea.addEventListener('wheel', (e: WheelEvent) => {
+      e.preventDefault();
+      const editorPanelEl = document.getElementById('editor-panel')!;
+      editorPanelEl.scrollTop += e.deltaY;
+    }, { passive: false });
 
-  /* Dropdown row (full-width, below header, does NOT shift layout) */
-  .character-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    width: 100%;
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid #eee;
-  }
+    /**
+     * Measure the pixel height of one line in the textarea by
+     * temporarily reading its computed line-height.
+     *
+     * @returns {number} Pixel height of a single line
+     */
+    function lineHeight(): number {
+      const lh = parseFloat(getComputedStyle(textarea!).lineHeight);
+      return isNaN(lh) ? 22 : lh;
+    }
 
-  .characters-dropdown[open] {
-    flex-basis: 100%;
-    
-  }
+    /**
+     * Build and inject the frontmatter placeholder `<div>` above the preview
+     * content, sized to the same pixel height as the frontmatter block in
+     * the textarea so that the first line of screenplay content lines up.
+     *
+     * @param {number} fmLineCount - Number of frontmatter lines (from countFrontmatterLines)
+     */
+    function injectFrontmatterPlaceholder(fmLineCount: number): void {
+      // Remove any existing placeholder
+      previewEl!.querySelector('.frontmatter-placeholder')?.remove();
 
-  .characters-dropdown {
-    display: contents;
-  }
+      if (fmLineCount <= 0) return;
 
-  .character-link {
-    color: #444;
-    white-space: nowrap;
-    text-decoration: none;
-    cursor: pointer;
-  }
+      const ph = document.createElement('div');
+      ph.className = 'frontmatter-placeholder';
+      ph.textContent = '— frontmatter —';
+      ph.style.height = `${fmLineCount * lineHeight()}px`;
 
-  .character-link:hover {
-    background: #e0e0e0;
-  }
+      previewEl!.insertBefore(ph, previewEl!.firstChild);
+    }
 
-  .content {
-    line-height: 1.6;
-  }
-</style>
+    /**
+     * Re-render the preview panel from the current textarea content.
+     * Preserves the frontmatter placeholder and updates only the screenplay HTML.
+     */
+    function updatePreview(): void {
+      const raw = textarea!.value;
+      const fmLines = countFrontmatterLines(raw);
+      const screenplayHtml = renderScreenplay(raw);
+
+      // Replace content but keep placeholder
+      previewEl!.innerHTML = screenplayHtml;
+      injectFrontmatterPlaceholder(fmLines);
+    }
+
+    /* ── Drag-to-resize logic ── */
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartWidth = 0;
+
+    resizeHandle.addEventListener('mousedown', (e: MouseEvent) => {
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartWidth = editorPanel!.getBoundingClientRect().width;
+      resizeHandle.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e: MouseEvent) => {
+      if (!isDragging) return;
+      const delta = e.clientX - dragStartX;
+      const newWidth = Math.max(200, dragStartWidth + delta);
+      editorPanel!.style.width = `${newWidth}px`;
+      editorPanel!.style.flex = 'none';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!isDragging) return;
+      isDragging = false;
+      resizeHandle.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    });
+
+    // helpers — grab once outside the click handler
+    const siteHeader = document.querySelector('header.header') as HTMLElement | null;
+    const siteNav    = document.querySelector('nav.nav')       as HTMLElement | null;
+
+    // Opening the editor
+    editBtn.addEventListener('click', () => {
+      isEditing = !isEditing;
+
+      if (isEditing) {
+        // if (siteHeader) siteHeader.style.display = 'none';
+        // if (siteNav)    siteNav.style.display    = 'none';
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+
+        // Reparent wrapper to body so nothing clips the fixed layout
+        document.body.appendChild(wrapper!);
+
+        scrollSync.appendChild(editorPanel!);
+        scrollSync.appendChild(resizeHandle);
+        scrollSync.appendChild(previewPanel!);
+        container.appendChild(scrollSync);
+
+        editorPanel.style.display = 'flex';
+        sharedHeader.style.display = 'block';
+        wrapper.classList.add('editing');
+        container.classList.add('editing');
+        editBtn.textContent = 'Close Editor';
+        updatePreview();
+      } else {
+        closeEditor();
+      }
+    });
+
+    function closeEditor(): void {
+      isEditing = false;
+
+      if (siteHeader) siteHeader.style.display = '';
+      if (siteNav)    siteNav.style.display    = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+
+      // Move wrapper back to its original position in the DOM
+      if (wrapperNextSibling) {
+        wrapperOriginalParent.insertBefore(wrapper!, wrapperNextSibling);
+      } else {
+        wrapperOriginalParent.appendChild(wrapper!);
+      }
+
+      container!.appendChild(editorPanel!);
+      container!.appendChild(previewPanel!);
+      if (scrollSync.parentNode) scrollSync.parentNode.removeChild(scrollSync);
+
+      previewEl!.querySelector('.frontmatter-placeholder')?.remove();
+      editorPanel!.style.display = 'none';
+      editorPanel!.style.width   = '';
+      editorPanel!.style.flex    = '';
+      sharedHeader!.style.display = 'none';
+      wrapper!.classList.remove('editing');
+      container!.classList.remove('editing');
+      editBtn!.textContent = 'Edit Scene';
+    }
+
+    /* ── Live preview on type ── */
+    textarea.addEventListener('input', updatePreview);
+
+    /* ── Save ── */
+    saveBtn.addEventListener('click', () => {
+      const content = textarea.value;
+      const sceneId = window.location.pathname.split('/scenes/')[1];
+      const blob = new Blob([content], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sceneId}.mdx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      saveBtn.textContent = 'Downloaded!';
+      setTimeout(() => { saveBtn.textContent = 'Save Changes'; }, 2000);
+    });
+
+    /* ── Cancel ── */
+    cancelBtn.addEventListener('click', () => {
+      textarea.value = textarea.defaultValue;
+      updatePreview();
+      closeEditor();
+    });
+  });
+</script>

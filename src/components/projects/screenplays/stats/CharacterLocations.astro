@@ -1,0 +1,87 @@
+---
+/**
+ * CharacterLocations.astro
+ *
+ * Shows a ranked list of locations a character appears in most,
+ * optionally scoped to an episode or scene range.
+ *
+ * @example
+ * <CharacterLocations project="her-majestys-displeasure" character="band/john-lennon" />
+ * <CharacterLocations project="her-majestys-displeasure" character="band/john-lennon" episode="episode-1" />
+ * <CharacterLocations project="her-majestys-displeasure" character="band/john-lennon" limit={5} />
+ */
+
+import { getCollection } from "astro:content";
+import { resolveCharacterId, labelFromId } from "../../../../utils/screenwriting/helpers";
+
+interface Props {
+  project: string;
+  character: string;
+  episode?: string;
+  sceneStart?: number;
+  sceneEnd?: number;
+  /** Max locations to show. Defaults to all. */
+  limit?: number;
+}
+
+const { project, character, episode, sceneStart, sceneEnd, limit } = Astro.props;
+
+const characterId = resolveCharacterId(project, character);
+
+let scenes = await getCollection("scenes");
+
+// Scope to project + character
+scenes = scenes.filter(
+  (s) =>
+    s.data.project.id === project &&
+    s.data.characters.some((c) => c.id === characterId)
+);
+
+// Apply optional filter
+if (episode) {
+  scenes = scenes.filter((s) => s.data.episode?.id === `${project}/${episode}`);
+} else if (sceneStart !== undefined || sceneEnd !== undefined) {
+  scenes = scenes.filter((s) => {
+    const n = s.data.sceneNumber;
+    const afterStart = sceneStart === undefined || n >= sceneStart;
+    const beforeEnd = sceneEnd === undefined || n <= sceneEnd;
+    return afterStart && beforeEnd;
+  });
+}
+
+// Tally locations
+const locationCounts: Record<string, number> = {};
+for (const scene of scenes) {
+  for (const loc of scene.data.location) {
+    locationCounts[loc.id] = (locationCounts[loc.id] ?? 0) + 1;
+  }
+}
+
+let ranked = Object.entries(locationCounts)
+  .map(([id, count]) => ({ id, count }))
+  .sort((a, b) => b.count - a.count);
+
+if (limit) ranked = ranked.slice(0, limit);
+
+const characterLabel = labelFromId(characterId);
+
+let context = "";
+if (episode) context = ` in ${labelFromId(`${project}/${episode}`)}`;
+else if (sceneStart !== undefined && sceneEnd !== undefined)
+  context = ` in scenes ${sceneStart}–${sceneEnd}`;
+---
+
+<section>
+  <h3>{characterLabel}'s locations{context}</h3>
+  {ranked.length === 0 ? (
+    <p>No scenes found.</p>
+  ) : (
+    <ol>
+      {ranked.map(({ id, count }) => (
+        <li>
+          <strong>{labelFromId(id)}</strong> — {count} {count === 1 ? "scene" : "scenes"}
+        </li>
+      ))}
+    </ol>
+  )}
+</section>

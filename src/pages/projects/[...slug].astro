@@ -9,10 +9,14 @@
 import { getCollection, getEntry } from "astro:content";
 import { type CollectionEntry } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import NewSceneButton from "../../components/editor/NewSceneButton.astro";
+import NewCharacterButton from "../../components/editor/NewCharacterButton.astro";
+import NewLocationButton from "../../components/editor/NewLocationButton.astro";
+import FullscreenEditor from "../../components/editor/FullscreenEditor.astro";
 
 export async function getStaticPaths() {
   const projects = await getCollection("projects");
-  return projects.map((project) => ({
+  return projects.map((project: CollectionEntry<"projects">) => ({
     params: { slug: project.id },
     props: { project },
   }));
@@ -27,25 +31,29 @@ const { data } = project;
 
 // Get related collections for this project
 const [scenes, plots, beats, characters, locations, episodes] = await Promise.all([
-  getCollection("scenes", (scene) => scene.data.project.id === project.id),
-  getCollection("plots", (plot) => plot.data.project.id === project.id),
-  getCollection("beats", (beat) => beat.data.project.id === project.id),
-  getCollection("characters", (character) => character.data.project.id === project.id),
-  getCollection("locations", (location) => location.data.project.id === project.id),
-  getCollection("episodes", (episode) => episode.data.project.id === project.id),
+  getCollection("scenes", (scene: CollectionEntry<"scenes">) => scene.data.project.id === project.id),
+  getCollection("plots", (plot: CollectionEntry<"plots">) => plot.data.project.id === project.id),
+  getCollection("beats", (beat: CollectionEntry<"beats">) => beat.data.project.id === project.id),
+  getCollection("characters", (character: CollectionEntry<"characters">) => character.data.project.id === project.id),
+  getCollection("locations", (location: CollectionEntry<"locations">) => location.data.project.id === project.id),
+  getCollection("episodes", (episode: CollectionEntry<"episodes">) => episode.data.project.id === project.id),
 ]);
 
 // Sort collections
-const sortedScenes = scenes.sort((a, b) => (a.data.sceneNumber || 0) - (b.data.sceneNumber || 0));
-const sortedPlots = plots.sort((a, b) => a.data.title.localeCompare(b.data.title));
-const sortedBeats = beats.sort((a, b) => (a.data.beatNumber || 0) - (b.data.beatNumber || 0));
-const sortedCharacters = characters.sort((a, b) => a.data.name.localeCompare(b.data.name));
-const sortedLocations = locations.sort((a, b) => a.data.name.localeCompare(b.data.name));
-const sortedEpisodes = episodes.sort((a, b) => (a.data.episodeNumber || 0) - (b.data.episodeNumber || 0));
+const sortedScenes = scenes.sort((a: CollectionEntry<"scenes">, b: CollectionEntry<"scenes">) => (a.data.sceneNumber || 0) - (b.data.sceneNumber || 0));
+const sortedPlots = plots.sort((a: CollectionEntry<"plots">, b: CollectionEntry<"plots">) => a.data.title.localeCompare(b.data.title));
+const sortedBeats = beats.sort((a: CollectionEntry<"beats">, b: CollectionEntry<"beats">) => (a.data.beatNumber || 0) - (b.data.beatNumber || 0));
+const sortedCharacters = characters.sort((a: CollectionEntry<"characters">, b: CollectionEntry<"characters">) => a.data.name.localeCompare(b.data.name));
+const sortedLocations = locations.sort((a: CollectionEntry<"locations">, b: CollectionEntry<"locations">) => a.data.name.localeCompare(b.data.name));
+const sortedEpisodes = episodes.sort((a: CollectionEntry<"episodes">, b: CollectionEntry<"episodes">) => (a.data.episodeNumber || 0) - (b.data.episodeNumber || 0));
 ---
 
 <BaseLayout title={data.title}>
+  <div id="fullscreen-editor-container" style="display:none">
+    <FullscreenEditor />
+  </div>
   <div class="project-detail">
+    
     <header class="project-header">
       <h1>{data.title}</h1>
       {data.logline && <p class="logline">{data.logline}</p>}
@@ -63,7 +71,7 @@ const sortedEpisodes = episodes.sort((a, b) => (a.data.episodeNumber || 0) - (b.
         <div class="themes">
           <h3>Themes</h3>
           <div class="theme-tags">
-            {data.themes.map((theme) => (
+            {data.themes.map((theme: any) => (
               <span class="theme-tag">{theme.id.replace('-', ' ')}</span>
             ))}
           </div>
@@ -111,7 +119,13 @@ const sortedEpisodes = episodes.sort((a, b) => (a.data.episodeNumber || 0) - (b.
         </a>
       </div>
     </nav>
+    <div class="action-buttons">
+      <NewSceneButton />
+      <NewCharacterButton />
+      <NewLocationButton />
+    </div>
   </div>
+  
 </BaseLayout>
 
 <style>
@@ -137,6 +151,15 @@ const sortedEpisodes = episodes.sort((a, b) => (a.data.episodeNumber || 0) - (b.
     color: var(--text-secondary);
     margin-bottom: var(--space-6);
     line-height: 1.6;
+  }
+
+  .action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-3);
+    width: 100%;
+    margin: var(--space-6) auto;
+    flex-wrap: wrap;
   }
 
   .project-meta {

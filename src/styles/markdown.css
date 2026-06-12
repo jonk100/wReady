@@ -1,0 +1,10 @@
+:root {
+  ul, ol{
+    padding-left: var(--space-6);
+    margin-bottom: var(--space-6);
+  }
+  li {
+    margin-bottom: var(--space-2);
+    line-height: 1.25;
+  }
+}

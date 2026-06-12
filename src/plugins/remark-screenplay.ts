@@ -58,6 +58,7 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
   return (tree, file) => {
     const newChildren: any[] = [];
 
+    // Determine if we're in a scene file
     const implicitEnabled = isSceneFilePath(
       String((file as any)?.path ?? "")
     );
@@ -66,6 +67,7 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
     let dialogueBuffer: any[] = [];
     let currentCharacter: string | null = null;
 
+    // Helper to flush dialogue buffer
     const flushDialogue = () => {
       if (!dialogueBuffer.length) return;
 
@@ -77,6 +79,7 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
       currentCharacter = null;
     };
 
+    // Process each paragraph
     visit(tree, "paragraph", (node: Paragraph) => {
       const hasNonText = node.children.some(
         (child) => child.type !== "text"
@@ -87,21 +90,25 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
         return;
       }
 
+      // Get the raw text content of the paragraph
       const rawText = node.children
         .filter((child): child is Text => child.type === "text")
         .map((child) => child.value)
         .join("");
 
+      // If the paragraph is empty, flush and keep it
       if (!rawText.trim()) {
         flushDialogue();
         newChildren.push(node);
         return;
       }
 
+      // Get the source of the paragraph if available
       const paragraphSource =
         getParagraphSource(file, node) ?? rawText;
       let lines = paragraphSource.trimEnd().split(/\r?\n/);
 
+      // Determine if we should process line-by-line
       const shouldProcessLineByLine =
         inDialogue ||
         lines.some((line) => {
@@ -116,10 +123,12 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
           return false;
         });
 
+      // If not processing line-by-line, handle as a block
       if (!shouldProcessLineByLine) {
         const raw = rawText.trim();
         const match = raw.match(BLOCK_RE);
 
+        // If no block prefix, handle based on context
         if (!match) {
           if (inDialogue) {
             dialogueBuffer.push(
@@ -133,6 +142,7 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
           flushDialogue();
 
           if (implicitEnabled) {
+            // Check for implicit scene heading
             if (isImplicitSceneLine(raw)) {
               newChildren.push(
                 jsx("Scene", normalizeSceneHeading(raw))
@@ -141,6 +151,7 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
               return;
             }
 
+            // Check for implicit character line
             newChildren.push(
               jsx("Action", applyInlineCapsMarkers(raw))
             );
@@ -152,14 +163,17 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
           return;
         }
 
+        // Handle block prefix
         const [, prefix, valueRaw] = match;
         const type = PREFIX_MAP[prefix.toLowerCase()];
         let value = valueRaw.trim();
 
+        // Normalize scene headings
         if (type === "scene") {
           value = normalizeSceneHeading(value);
         }
 
+        // Handle character blocks
         if (type === "character") {
           flushDialogue();
           inDialogue = true;
@@ -170,6 +184,7 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
           return;
         }
 
+        // Handle parentheticals
         if (type === "parenthetical") {
           dialogueBuffer.push(
             jsx(
@@ -181,6 +196,7 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
           return;
         }
 
+        // Handle dialogue
         if (type === "dialogue") {
           dialogueBuffer.push(
             jsx("Dialogue", value, {
@@ -196,11 +212,13 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
         return;
       }
 
+      // Handle inline elements
       if (lines.length === 1) {
         const segments = splitShorthandRuns(lines[0]);
         if (segments.length > 1) lines = segments;
       }
 
+      // Process each line
       for (const line of lines) {
         const raw = line.trim();
         if (!raw) {
@@ -211,8 +229,11 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
 
         const match = raw.match(BLOCK_RE);
 
+        // If no block match, handle implicit elements
         if (!match) {
           if (implicitEnabled) {
+
+            // Handle implicit scene headingsjsx("Paragraph", raw));
             if (isImplicitSceneLine(raw)) {
               flushDialogue();
               newChildren.push(
@@ -222,6 +243,7 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
               continue;
             }
 
+            // Handle implicit character lines
             if (isImplicitCharacterLine(raw)) {
               flushDialogue();
               inDialogue = true;
@@ -232,6 +254,7 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
               continue;
             }
 
+            // Handle implicit parentheticals
             if (inDialogue && isImplicitParentheticalLine(raw)) {
               dialogueBuffer.push(
                 jsx(
@@ -243,6 +266,7 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
               continue;
             }
 
+            // Handle implicit dialogue
             if (inDialogue) {
               dialogueBuffer.push(
                 jsx(
@@ -254,6 +278,7 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
               continue;
             }
 
+            // Fallback to action
             flushDialogue();
             newChildren.push(
               jsx("Action", applyInlineCapsMarkers(raw))
@@ -338,6 +363,7 @@ export const remarkScreenplay: Plugin<[], Root> = () => {
 /* helpers */
 /* ------------------------------------------------------------------ */
 
+// jsx helper to create MDX AST nodes
 function jsx(
   name: string,
   value: string,
@@ -357,6 +383,7 @@ function jsx(
   };
 }
 
+// helper to create blank lines
 function blankLine() {
   return {
     type: "paragraph",
@@ -364,6 +391,7 @@ function blankLine() {
   };
 }
 
+// helper to convert kebab-case to PascalCase
 function pascal(input: string) {
   return input
     .split("-")
@@ -371,6 +399,7 @@ function pascal(input: string) {
     .join("");
 }
 
+// helper to escape regex special characters
 function splitShorthandRuns(input: string) {
   const firstNonWs = input.search(/\S/);
   if (firstNonWs === -1) return [input];
@@ -403,15 +432,37 @@ function splitShorthandRuns(input: string) {
   return segments.length ? segments : [input];
 }
 
+/**
+ * Helper to escape regex special characters
+ * - 
+ * @param input 
+ * @returns {string}
+ * if (!raw) return false;
+ * if (raw.startsWith("[")) return false;
+ * if (raw.startsWith("#")) return false;
+ * if (raw.startsWith(">")) return false;
+ * if (raw.startsWith("*")) return false;
+ */
 function escapeRegExp(input: string) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** 
+ * Helper to determine if a file path is a scene file
+ * @param filePath - The file path to check
+ * @returns {boolean} - True if the file path is a scene file
+ */
 function isSceneFilePath(filePath: string) {
   const normalized = filePath.replace(/\\/g, "/").toLowerCase();
   return normalized.includes("/src/content/scenes/");
 }
 
+/**
+ * Helper to get the source of a paragraph node
+ * @param file - The file object
+ * @param node - The paragraph node
+ * @returns {string|null} - The source of the paragraph or null
+ */
 function getParagraphSource(file: any, node: any) {
   const value = file?.value;
   if (typeof value !== "string") return null;
@@ -424,6 +475,11 @@ function getParagraphSource(file: any, node: any) {
   return value.slice(start, end);
 }
 
+/**
+ * Helper to determine if a line is a character line
+ * @param input - The input line
+ * @returns {boolean} - True if the line is a character line
+ */
 function isImplicitCharacterLine(input: string) {
   const raw = input.trim();
   if (!raw) return false;
@@ -440,12 +496,22 @@ function isImplicitCharacterLine(input: string) {
   return true;
 }
 
+/**
+ * Helper to determine if a line is a parenthetical line
+ * @param input - The input line
+ * @returns {boolean} - True if the line is a parenthetical line
+ */
 function isImplicitParentheticalLine(input: string) {
   const raw = input.trim();
   if (!raw) return false;
   return /^\(.*\)$/.test(raw);
 }
 
+/**
+ * Helper to strip parentheses from a parenthetical line
+ * @param input - The input line
+ * @returns {string} - the stripped line
+ */
 function stripOuterParens(input: string) {
   const raw = input.trim();
   if (raw.startsWith("(") && raw.endsWith(")") && raw.length >= 2) {
@@ -454,6 +520,11 @@ function stripOuterParens(input: string) {
   return raw;
 }
 
+/**
+ * Helper to determine if a line is a scene heading line
+ * @param input - The input line
+ * @returns {boolean} - True if the line is a scene heading line
+ */
 function isImplicitSceneLine(input: string) {
   const raw = input.trim();
   if (!raw) return false;
@@ -461,6 +532,11 @@ function isImplicitSceneLine(input: string) {
   return /^(int\.?\/ext\.?|int\/ext|int\.|int|ext\.|ext)\b/i.test(raw);
 }
 
+/**
+ * Helper to normalize a scene heading line
+ * @param input - The input line
+ * @returns {string} - the normalized line
+ */
 function normalizeSceneHeading(input: string) {
   return input
     .trim()
@@ -470,6 +546,11 @@ function normalizeSceneHeading(input: string) {
     .replace(/^ext\b/i, "EXT.");
 }
 
+/**
+ * Helper to apply inline caps markers to a line
+ * @param input - The input line
+ * @returns {string} - the line with inline caps applied if any
+ */
 function applyInlineCapsMarkers(input: string) {
   // Inline marker: `//Name Here` -> `NAME HERE`
   // We only treat `//` as a marker when it appears at the start of the string
@@ -480,6 +561,13 @@ function applyInlineCapsMarkers(input: string) {
   );
 }
 
+/**
+ * Helper to warn the user about a parsing issue
+ * @param file - the file
+ * @param message - the message
+ * @param node - the node to highlight
+ * @returns 
+ */
 function warn(file: any, message: string, node: any) {
   file.message(message, node);
 }

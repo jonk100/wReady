@@ -1,0 +1,162 @@
+---
+export interface Props {
+  id: string;
+  anchor: string; // The class or selector of the element this tooltip anchors to
+  placement?: 'top' | 'bottom' | 'left' | 'right';
+  class?: string;
+  "class:list"?: Record<string, boolean> | any[];
+  [key: string]: any;
+}
+
+const {
+  id,
+  anchor,
+  placement = 'top',
+  class: className = '',
+  "class:list": classList = {},
+  ...rest
+} = Astro.props;
+---
+
+<div
+  id={id}
+  popover="manual"
+  class:list={[
+    'tooltip',
+    `tooltip--${placement}`,
+    className,
+    classList
+  ]}
+  role="tooltip"
+  {...rest}
+>
+  <slot />
+</div>
+
+<script is:inline define:vars={{ id, anchor, placement }}>
+  // Tooltips are triggered by hover and focus on the anchor element
+  const initTooltip = () => {
+    const tooltip = document.getElementById(id);
+    // Find trigger element by class or selector
+    const trigger = document.querySelector(`.${anchor}`) || document.getElementById(anchor);
+    
+    if (!tooltip || !trigger) {
+      console.warn(`Tooltip not initialized: id=${id}, anchor=${anchor}`);
+      return;
+    }
+    
+    // Position tooltip relative to trigger element
+    const positionTooltip = () => {
+      const triggerRect = trigger.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      const gap = 8; // gap between tooltip and trigger
+      
+      let top = 0, left = 0;
+      
+      switch(placement) {
+        case 'top':
+          top = triggerRect.top - tooltipRect.height - gap;
+          left = triggerRect.left + (triggerRect.width - tooltipRect.width) / 2;
+          break;
+        case 'bottom':
+          top = triggerRect.bottom + gap;
+          left = triggerRect.left + (triggerRect.width - tooltipRect.width) / 2;
+          break;
+        case 'left':
+          top = triggerRect.top + (triggerRect.height - tooltipRect.height) / 2;
+          left = triggerRect.left - tooltipRect.width - gap;
+          break;
+        case 'right':
+          top = triggerRect.top + (triggerRect.height - tooltipRect.height) / 2;
+          left = triggerRect.right + gap;
+          break;
+      }
+      
+      // Keep tooltip within viewport
+      if (left < 0) left = gap;
+      if (left + tooltipRect.width > window.innerWidth) left = window.innerWidth - tooltipRect.width - gap;
+      if (top < 0) top = gap;
+      if (top + tooltipRect.height > window.innerHeight) top = window.innerHeight - tooltipRect.height - gap;
+      
+      tooltip.style.top = Math.round(top) + 'px';
+      tooltip.style.left = Math.round(left) + 'px';
+    };
+    
+    const show = () => {
+      try { 
+        tooltip.showPopover();
+        // Position after showing
+        requestAnimationFrame(positionTooltip);
+      } catch(e) {
+        console.warn(`Could not show tooltip ${id}:`, e);
+      }
+    };
+    
+    const hide = () => {
+      try { 
+        tooltip.hidePopover(); 
+      } catch(e) {
+        console.warn(`Could not hide tooltip ${id}:`, e);
+      }
+    };
+
+    trigger.addEventListener('mouseenter', show);
+    trigger.addEventListener('mouseleave', hide);
+    trigger.addEventListener('focus', show);
+    trigger.addEventListener('blur', hide);
+    
+    // Reposition on window scroll/resize
+    window.addEventListener('scroll', () => {
+      if (tooltip.matches(':popover-open')) {
+        positionTooltip();
+      }
+    }, true);
+  };
+  
+  // Wait for DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTooltip);
+  } else {
+    initTooltip();
+  }
+  document.addEventListener('astro:page-load', initTooltip);
+</script>
+
+<style>
+  .tooltip {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    background: var(--text);
+    color: var(--text-inverse);
+    border: none;
+    border-radius: var(--rad-sm);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    pointer-events: none; /* Tooltips shouldn't block clicks */
+    z-index: 9999;
+    
+    /* Popover positioning - will be positioned by JavaScript */
+    position: fixed;
+    inset: auto;
+    white-space: nowrap;
+  }
+  
+  /* Native CSS Presence (Mount/Unmount) */
+  .tooltip {
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out, display 0.15s allow-discrete, overlay 0.15s allow-discrete;
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  .tooltip:is(:popover-open, .\:popover-open) {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  @starting-style {
+    .tooltip:is(:popover-open, .\:popover-open) {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+  }
+</style>

@@ -1,0 +1,511 @@
+---
+/**
+ * TopFive.astro
+ *
+ * Interactive top 5 stats display for screenplays.
+ * Shows top characters by lines/appearances, top locations, etc.
+ *
+ * @example
+ * <TopFive project="her-majestys-displeasure" type="characters-by-lines" />
+ * <TopFive project="her-majestys-displeasure" type="locations" />
+ * <TopFive project="her-majestys-displeasure" type="episodes" />
+ */
+
+import { getCollection } from "astro:content";
+import { labelFromId } from "../../../../utils/screenwriting/helpers";
+
+interface Props {
+  project: string;
+  type?: "characters-by-lines" | "characters-by-appearances" | "locations" | "episodes" | "character-pairs";
+}
+
+const { project, type = "characters-by-lines" } = Astro.props;
+
+// Fetch all scenes for this project
+let allScenes = await getCollection("scenes");
+allScenes = allScenes.filter((s) => s.data.project.id === project);
+
+// Count lines function
+function countLines(body: string, charId: string): number {
+  const slug = charId.split("/").pop()!.toLowerCase();
+  const cueRegex = /^c-(.+)$/gm;
+  let count = 0;
+  let match: RegExpExecArray | null;
+  while ((match = cueRegex.exec(body)) !== null) {
+    const raw = match[1]
+      .replace(/\(CONT'D\)/gi, "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+    if (raw === slug || slug.includes(raw)) count++;
+  }
+  return count;
+}
+
+interface TopItem {
+  rank: number;
+  name: string;
+  value: number;
+  meta?: string;
+  id?: string;
+  href?: string;
+}
+
+let topItems: TopItem[] = [];
+let typeLabel = "";
+let valueLabel = "Count";
+
+// Generate top 5 based on type
+if (type === "characters-by-lines") {
+  typeLabel = "Characters by Total Lines";
+  valueLabel = "Lines";
+
+  const characterLines = allScenes.reduce(
+    (acc, scene) => {
+      if (!scene.body) return acc;
+      for (const char of scene.data.characters) {
+        acc[char.id] = (acc[char.id] ?? 0) + countLines(scene.body, char.id);
+      }
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  topItems = Object.entries(characterLines)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id, lines], idx) => ({
+      rank: idx + 1,
+      name: labelFromId(id),
+      value: lines,
+      id,
+      href: `/characters/${id}`,
+    }));
+} else if (type === "characters-by-appearances") {
+  typeLabel = "Characters by Scene Appearances";
+  valueLabel = "Scenes";
+
+  const characterAppearances = allScenes.reduce(
+    (acc, scene) => {
+      for (const char of scene.data.characters) {
+        acc[char.id] = (acc[char.id] ?? 0) + 1;
+      }
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  topItems = Object.entries(characterAppearances)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id, count], idx) => ({
+      rank: idx + 1,
+      name: labelFromId(id),
+      value: count,
+      id,
+      href: `/characters/${id}`,
+    }));
+} else if (type === "locations") {
+  typeLabel = "Most Used Locations";
+  valueLabel = "Scenes";
+
+  const locationCounts = allScenes.reduce(
+    (acc, scene) => {
+      for (const loc of scene.data.location) {
+        acc[loc.id] = (acc[loc.id] ?? 0) + 1;
+      }
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  topItems = Object.entries(locationCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id, count], idx) => ({
+      rank: idx + 1,
+      name: labelFromId(id),
+      value: count,
+      id,
+    }));
+} else if (type === "episodes") {
+  typeLabel = "Episodes by Scenes";
+  valueLabel = "Scenes";
+
+  const episodeCounts = allScenes.reduce(
+    (acc, scene) => {
+      if (scene.data.episode?.id) {
+        acc[scene.data.episode.id] = (acc[scene.data.episode.id] ?? 0) + 1;
+      }
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  topItems = Object.entries(episodeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id, count], idx) => ({
+      rank: idx + 1,
+      name: labelFromId(id),
+      value: count,
+      id,
+    }));
+} else if (type === "character-pairs") {
+  typeLabel = "Most Frequent Character Pairs";
+  valueLabel = "Scenes";
+
+  const pairCounts: Record<string, number> = {};
+
+  for (const scene of allScenes) {
+    const chars = scene.data.characters.map((c) => c.id).sort();
+    for (let i = 0; i < chars.length; i++) {
+      for (let j = i + 1; j < chars.length; j++) {
+        const pair = `${chars[i]}|${chars[j]}`;
+        pairCounts[pair] = (pairCounts[pair] ?? 0) + 1;
+      }
+    }
+  }
+
+  topItems = Object.entries(pairCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([pair, count], idx) => {
+      const [char1, char2] = pair.split("|");
+      return {
+        rank: idx + 1,
+        name: `${labelFromId(char1)} & ${labelFromId(char2)}`,
+        value: count,
+        meta: "scenes together",
+      };
+    });
+}
+---
+
+<div class="top-five-card">
+  <!-- Collapsed: Summary -->
+  <details>
+    <summary>
+      <div class="top-five-trigger">
+        <div class="trigger-main">
+          <p class="trigger-label">{typeLabel}</p>
+          <p class="trigger-top">🥇 {topItems[0]?.name}</p>
+        </div>
+        <div class="chevron">↓</div>
+      </div>
+    </summary>
+
+      <!-- Expanded: Table -->
+    <div class="top-five-expanded">
+      <div class="table-header">
+        <h2>{typeLabel}</h2>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="top-five-table">
+          <thead>
+            <tr>
+              <th class="rank-col">Rank</th>
+              <th class="name-col">Name</th>
+              <th class="value-col">{valueLabel}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {topItems.map((item) => (
+              <tr class="table-row">
+                <td class="rank-cell">
+                  <span class="rank-badge">
+                    {item.rank === 1 && "🥇"}
+                    {item.rank === 2 && "🥈"}
+                    {item.rank === 3 && "🥉"}
+                    {item.rank > 3 && `#${item.rank}`}
+                  </span>
+                </td>
+                <td class="name-cell">
+                  {item.href ? (
+                    <a href={item.href} class="name-link">
+                      {item.name}
+                    </a>
+                  ) : (
+                    <span>{item.name}</span>
+                  )}
+                </td>
+                <td class="value-cell">{item.value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- <script>
+  const cards = document.querySelectorAll(".top-five-card");
+
+  cards.forEach((card) => {
+    const trigger = card.querySelector(".top-five-trigger") as HTMLElement;
+    const expanded = card.querySelector(".top-five-expanded") as HTMLElement;
+    let isExpanded = false;
+
+    trigger.addEventListener("click", () => {
+      isExpanded = !isExpanded;
+      card.classList.toggle("is-expanded", isExpanded);
+
+      if (isExpanded) {
+        const rect = trigger.getBoundingClientRect();
+        expanded.style.left = `${rect.right + 16}px`;
+        expanded.style.top = `${rect.top}px`;
+        expanded.style.opacity = "1";
+        expanded.style.pointerEvents = "auto";
+      } else {
+        expanded.style.opacity = "0";
+        expanded.style.pointerEvents = "none";
+      }
+    });
+
+    // Close when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!card.contains(e.target as Node) && isExpanded) {
+        isExpanded = false;
+        card.classList.remove("is-expanded");
+        expanded.style.opacity = "0";
+        expanded.style.pointerEvents = "none";
+      }
+    });
+  });
+</script> -->
+
+<style>
+  .top-five-card {
+    background: linear-gradient(
+      135deg,
+      rgba(var(--bg-raised-rgb), 0.6),
+      rgba(var(--bg-card-rgb), 0.4)
+    );
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: visible;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    cursor: pointer;
+    position: relative;
+  }
+
+  .top-five-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.1);
+  }
+
+  .top-five-card.is-expanded {
+    box-shadow: 0 12px 48px rgba(var(--accent-rgb), 0.15);
+  }
+
+  /* Collapsed state */
+  .top-five-trigger {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    gap: 1rem;
+  }
+
+  .trigger-main {
+    flex: 1;
+    text-align: center;
+  }
+
+  .trigger-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  .trigger-top {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0.5rem 0 0 0;
+  }
+
+  .chevron {
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  details[open] .chevron {
+    transform: rotate(180deg);
+  }
+
+  /* Expanded state - pops out to the right */
+  .top-five-expanded {
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+      transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1000;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(var(--bg-card-rgb), 0.95);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  }
+
+  details[open] .top-five-expanded {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .table-header {
+    padding: 1.5rem 1.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .table-header h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  .table-wrapper {
+    padding: 1.5rem;
+    overflow-x: auto;
+  }
+
+  .top-five-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  .top-five-table thead {
+    border-bottom: 2px solid var(--border);
+  }
+
+  .top-five-table th {
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--accent-dim);
+    font-size: 0.7rem;
+  }
+
+  .rank-col {
+    width: 60px;
+  }
+
+  .value-col {
+    width: 80px;
+    text-align: right;
+  }
+
+  .table-row {
+    border-bottom: 1px solid var(--border-subtle);
+    transition: all 0.2s;
+  }
+
+  .table-row:hover {
+    background: rgba(var(--accent-rgb), 0.05);
+  }
+
+  .table-row:last-child {
+    border-bottom: none;
+  }
+
+  .top-five-table td {
+    padding: 1rem 0.75rem;
+    vertical-align: middle;
+  }
+
+  .rank-cell {
+    text-align: center;
+    font-weight: 700;
+  }
+
+  .rank-badge {
+    display: inline-block;
+    font-size: 1.25rem;
+  }
+
+  .name-cell {
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .name-link {
+    color: var(--accent);
+    text-decoration: none;
+    transition: all 0.2s;
+    font-weight: 600;
+  }
+
+  .name-link:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+  }
+
+  .value-cell {
+    text-align: right;
+    color: var(--accent);
+    font-weight: 700;
+    font-family: "Courier New", monospace;
+  }
+
+  @media (max-width: 1200px) {
+    .top-five-expanded {
+      width: 500px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .top-five-expanded {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: calc(100vw - 2rem);
+      max-width: 500px;
+      transform: translate(-50%, -50%) scale(0.9);
+    }
+
+    details[open] .top-five-expanded {
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .top-five-table {
+      font-size: 0.75rem;
+    }
+
+    .trigger-label {
+      font-size: 0.65rem;
+    }
+
+    .trigger-top {
+      font-size: 0.9rem;
+    }
+  }
+
+  summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  details[open] summary {
+    height: 0%;
+    overflow: hidden;
+  }
+</style>

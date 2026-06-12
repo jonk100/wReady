@@ -104,8 +104,8 @@ const plotSpecificTensionData = sortedBeats.map((beat, index) => {
   const episodeMatch = scene.match(/episode-(\d+)\/s(\d+)-/);
   const sceneMatch = scene.match(/s(\d+)-/);
   
-  // Get beat number for this plot
-  const beatNumber = beat.data.beatNumber || (() => {
+  // Get beat number for this plot from the plots array
+  const beatNumber = plotData?.beatNumber || (() => {
     // Fallback: extract beat number from filename
     const filename = beat.id.split('/').pop()?.replace(/\.(md|mdx)$/, '') || '';
     const beatMatch = filename.match(/beat-(\d+)/);
@@ -138,6 +138,21 @@ console.log('- Related beats:', sortedBeats.map(b => ({
   scene: b.data.scene 
 })));
 console.log('- Tension data:', plotSpecificTensionData);
+
+const beatTooltips = sortedBeats.map((beat) => {  
+  const sceneId = typeof beat.data.scene === 'string'
+    ? beat.data.scene
+    : beat.data.scene?.id || '';
+  const episodeMatch = sceneId.match(/episode-(\d+)\/s(\d+)-/);
+  const sceneMatch = sceneId.match(/s(\d+)-/);
+  const plotData = beat.data.plots?.find((p) => p.plot.id === plot.id);
+  const tension = plotData?.tension ?? beat.data.tension ?? 0;
+  
+  return {
+    scene: `E${episodeMatch?.[1] || '?'}S${episodeMatch?.[2] || sceneMatch?.[1] || '?'}`,
+    tension
+  };
+});
 ---
 
 <Layout title={`${plot.data.title} - Plots`}>
@@ -176,26 +191,20 @@ console.log('- Tension data:', plotSpecificTensionData);
 
     <!-- Plot Tension Graph -->
     {plotSpecificTensionData.length > 0 && (
-      <div class="tension-section">
-        <h2>Plot Tension Arc</h2>
-        <p class="tension-description">
-          Visualization of tension levels for "{plot.data.title}" across all beats in this plot.
-        </p>
         <TensionGraph 
           data={plotSpecificTensionData}
           title={`${plot.data.title} Beat Tension`}
-          width={800}
-          height={300}
+          width={980}
           showOverall={false}
           showLegend={false}
           gradientColors={[
             // Use same color scale as PlotBeatCard tension boxes - neutral gray to bright red
-            'rgb(156, 163, 175)', // Tension 1
-            'rgb(180, 140, 140)'  // Tension 10
+            // 'rgb(0, 100, 225)', // Tension 1
+            // 'rgb(250, 120, 120)'  // Tension 10
           ]}
           beatLinks={sortedBeats.map(beat => `/beats/${beat.id.replace('src/content/beats/', '').replace(/\.(md|mdx)$/, '')}`)}
+          beatTooltips={beatTooltips}
         />
-      </div>
     )}
 
     <div class="plot-content">
@@ -271,13 +280,14 @@ console.log('- Tension data:', plotSpecificTensionData);
   .container {
     max-width: 1000px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 2rem 0;
+    
   }
 
   .plot-header {
     margin-bottom: 3rem;
     padding-bottom: 2rem;
-    border-bottom: 2px solid #eee;
+    border-bottom: 2px solid var(--border);
   }
 
   .plot-header h1 {
@@ -296,7 +306,7 @@ console.log('- Tension data:', plotSpecificTensionData);
   .plot-type,
   .plot-level,
   .parent-plot {
-    background: #f5f5f5;
+    background: #000000;
     padding: 0.5rem 1rem;
     border-radius: 20px;
     font-size: 0.875rem;
@@ -304,17 +314,22 @@ console.log('- Tension data:', plotSpecificTensionData);
   }
 
   .plot-type {
-    background: #e8f5e8;
-    color: #2e7d32;
+    background: var(--blue-subtle);
+    color: var(--blue-light);
+    border: 1px solid rgba(var(--blue-light-rgb),.6);
+
+    font-weight: 400;
+    letter-spacing: 0.75px;
   }
 
   .plot-level {
-    background: #e3f2fd;
-    color: #1976d2;
+    background: rgba(var(--blue-dim-rgb), .5);
+    border: 1px solid rgba(var(--blue-rgb),.7);
+    color: var(--accent);
   }
 
   .parent-plot {
-    background: #fff3e0;
+    background: var(--accent-subtle);
     color: #e65100;
   }
 
@@ -329,18 +344,18 @@ console.log('- Tension data:', plotSpecificTensionData);
 
   .summary {
     font-size: 1.125rem;
-    line-height: 1.6;
-    color: #555;
+    line-height: 1.4;
+    color: var(--text-secondary);
     font-style: italic;
     margin: 0;
   }
 
   .tension-section {
     margin-bottom: 3rem;
-    padding: 2rem;
-    background: #f8fafc;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
+    padding: 1rem;
+    background: #ff0000;
+    border-radius: 2px;
+    border: 1px solid #006eff;
   }
 
   .tension-section h2 {
@@ -355,12 +370,14 @@ console.log('- Tension data:', plotSpecificTensionData);
     margin-bottom: 2rem;
     font-size: 0.95rem;
     line-height: 1.5;
+    background: #3300ff;
   }
 
   .plot-content {
     display: grid;
     grid-template-columns: 1fr 300px;
-    gap: 3rem;
+    gap: 1rem;
+    color: var(--text-secondary);
   }
 
   .main-content {
@@ -380,7 +397,6 @@ console.log('- Tension data:', plotSpecificTensionData);
 
   .markdown h1 {
     font-size: 2rem;
-    border-bottom: 1px solid #eee;
     padding-bottom: 0.5rem;
   }
 
@@ -403,13 +419,13 @@ console.log('- Tension data:', plotSpecificTensionData);
   }
 
   .markdown li {
+
     margin-bottom: 0.5rem;
   }
 
   .child-plots {
     margin-top: 3rem;
     padding-top: 2rem;
-    border-top: 1px solid #eee;
   }
 
   .plot-grid {
@@ -417,11 +433,12 @@ console.log('- Tension data:', plotSpecificTensionData);
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 1rem;
     margin-top: 1rem;
+
   }
 
   .plot-card {
-    background: #f9f9f9;
-    border: 1px solid #eee;
+    background: var(--bg-raised);
+
     border-radius: 8px;
     padding: 1rem;
   }
@@ -453,7 +470,7 @@ console.log('- Tension data:', plotSpecificTensionData);
   }
 
   .info-card {
-    background: #f9f9f9;
+    background: #2c292975;
     border: 1px solid #eee;
     border-radius: 8px;
     padding: 1.5rem;
@@ -466,24 +483,31 @@ console.log('- Tension data:', plotSpecificTensionData);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #666;
+    color: #b6acff;
+    background: var(--bg-raised);
+
   }
 
   .info-card ul {
     margin: 0;
     padding-left: 1.5rem;
     font-size: 0.875rem;
+    background: var(--bg-raised);
   }
 
   .beat-list {
     list-style: none;
     padding: 0;
+    background: var(--bg-raised);
+
   }
 
   .beat-list li {
     margin-bottom: 1rem;
     padding-bottom: 1rem;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #ff0000;
+    background: var(--bg-raised);
+
   }
 
   .beat-list li:last-child {
@@ -496,7 +520,7 @@ console.log('- Tension data:', plotSpecificTensionData);
   .beat-type,
   .tension {
     display: inline-block;
-    background: #f0f0f0;
+    background: #ff000088;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
     font-size: 0.75rem;
@@ -510,29 +534,29 @@ console.log('- Tension data:', plotSpecificTensionData);
     color: inherit;
     display: block;
     padding: 0.5rem;
-    background: white;
+    background: rgb(255, 0, 0);
     border: 1px solid #ddd;
     border-radius: 4px;
     transition: all 0.2s ease;
   }
 
   .beat-link:hover {
-    background: #f5f5f5;
+    background: var(--bg-raised);
     border-color: #999;
   }
 
   .beat-number {
-    background: #e3f2fd;
+    background: #0095ff;
     color: #1976d2;
   }
 
   .beat-type {
-    background: #e8f5e8;
+    background: #00ff00;
     color: #2e7d32;
   }
 
   .tension {
-    background: #fff3e0;
+    background: #ff9d00;
     color: #e65100;
   }
 
@@ -560,7 +584,7 @@ console.log('- Tension data:', plotSpecificTensionData);
   .scene-list a {
     display: block;
     padding: 0.5rem;
-    background: white;
+    background: rgb(10, 9, 9);
     border: 1px solid #ddd;
     border-radius: 4px;
     text-decoration: none;

@@ -36,6 +36,9 @@ const { title, count, description } = Astro.props;
         {count !== undefined && (
           <span class="index-header__count">{count}</span>
         )}
+        <div class="index-header__actions">
+          <slot name="actions" />
+        </div>
       </div>
       {description && (
         <p class="index-header__description">{description}</p>
@@ -66,8 +69,13 @@ const { title, count, description } = Astro.props;
 
   .index-header__title-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .index-header__actions {
+    margin-left: auto;
   }
 
   .index-header__title {

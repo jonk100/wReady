@@ -45,7 +45,6 @@ try {
     projectTitle = projectData?.data?.title || project;
   }
 } catch (error) {
-  // Use project slug as fallback
   console.warn(`Could not load project data for ${project}:`, error);
 }
 
@@ -98,13 +97,15 @@ const scenesWithCharacters = await Promise.all(
 
 <Layout title={`${episode.data.title} - Episodes`}>
   <div class="container">
-    <Breadcrumb 
-      items={[
-        { label: projectTitle, href: `/projects/${project}` },
-        { label: "Episodes", href: `/projects/${project}/episodes` },
-        { label: episode.data.title }
-      ]} 
-    />
+    <div class="no-print">
+      <Breadcrumb 
+        items={[
+          { label: projectTitle, href: `/projects/${project}` },
+          { label: "Episodes", href: `/projects/${project}/episodes` },
+          { label: episode.data.title }
+        ]} 
+      />
+    </div>
     
     <div class="episode-header">
       <h1>{episode.data.title}</h1>
@@ -117,6 +118,11 @@ const scenesWithCharacters = await Promise.all(
         <span class="episode-number">Episode {episode.data.episodeNumber}</span>
         <span class="scene-count">{sortedScenes.length} Scenes</span>
         <span class="status">{episode.data.status}</span>
+        
+        <button id="print-script-btn" class="print-button no-print">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          Print Screenplay PDF
+        </button>
       </div>
     </div>
 
@@ -125,10 +131,10 @@ const scenesWithCharacters = await Promise.all(
         <p>No scenes found for this episode.</p>
       </div>
     ) : (
-      <div class="episode-content">
+      <div class="episode-content print-screenplay-container">
         {scenesWithCharacters.map((scene, index) => (
           <div class="scene-section" id={`scene-${scene.data?.sceneNumber || 'unknown'}`}>
-            <div class="scene-header">
+            <div class="scene-header no-print">
               <h2>
                 <a href={`/scenes/${scene.id.replace('src/content/scenes/', '').replace(/\.(md|mdx)$/, '')}`}>
                   {scene.data.title}
@@ -183,7 +189,7 @@ const scenesWithCharacters = await Promise.all(
             </div>
             
             {index < scenesWithCharacters.length - 1 && (
-              <div class="scene-divider"></div>
+              <div class="scene-divider no-print"></div>
             )}
           </div>
         ))}
@@ -192,228 +198,191 @@ const scenesWithCharacters = await Promise.all(
   </div>
 </Layout>
 
+<script>
+  const printBtn = document.getElementById('print-script-btn');
+  
+  if (printBtn) {
+    printBtn.addEventListener('click', async () => {
+      // 1. Temporarily disable button
+      printBtn.innerText = "Generating PDF...";
+      printBtn.disabled = true;
+
+      // 2. Dynamically load Paged.js
+      const script = document.createElement('script');
+      script.src = "https://unpkg.com/pagedjs/dist/paged.polyfill.js";
+      document.head.appendChild(script);
+
+      // 3. Wait for Paged.js to format the document, then print
+      window.PagedConfig = {
+        auto: false, // Don't run automatically
+        after: (flow) => {
+          window.print();
+          // Optional: Reload the page after printing to restore your web UI
+          window.location.reload(); 
+        }
+      };
+
+      script.onload = () => {
+        window.PagedPolyfill.preview();
+      };
+    });
+  }
+</script>
+
 <style>
-  .container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
-
-  .episode-header {
-    margin-bottom: 3rem;
-    padding-bottom: 2rem;
-    border-bottom: 3px solid #eee;
-  }
-
-  .episode-header h1 {
-    margin: 0 0 1rem 0;
-    font-size: 2.5rem;
-  }
-
-  .logline {
-    font-size: 1.125rem;
-    color: var(--text-secondary);
-    font-style: italic;
-    margin: 0 0 1.5rem 0;
-    line-height: 1.6;
-  }
-
-  .episode-meta {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .episode-number,
-  .scene-count,
-  .status {
-    background: #f0f0f0;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    font-weight: bold;
-  }
-
-  .episode-number {
-    background: #bbddf3;
-    color: #1a5a8a;
-  }
-
-  .scene-count {
-    background: #e8f5e8;
-    color: #2e7d32;
-  }
-
-  .status {
-    background: #fff3e0;
-    color: #e65100;
-    text-transform: capitalize;
-  }
-
-  .no-scenes {
-    text-align: center;
-    padding: 3rem;
-    color: var(--text-secondary);
-  }
-
-  .episode-content {
-    margin-top: 2rem;
-  }
-
-  .scene-section {
-    margin-bottom: 4rem;
-  }
-
-  .scene-header {
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid #eee;
-  }
-
-  .scene-header h2 {
-    margin: 0 0 1rem 0;
-  }
-
-  .scene-header h2 a {
-    text-decoration: none;
-    color: inherit;
-  }
-
-  .scene-header h2 a:hover {
-    text-decoration: underline;
-    color: var(--accent);
-  }
-
-  .scene-meta {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .scene-num,
-  .int-ext,
-  .location,
-  .time,
-  .characters-toggle,
-  .character-link {
-    background: #f0f0f0;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    font-weight: bold;
-  }
-
-  .scene-num {
-    background: #e8f5e8;
-    color: #2e7d32;
-  }
-
-  .int-ext {
-    background: #fff3e0;
-    color: #e65100;
-  }
-
-  .location {
-    background: #e3f2fd;
-    color: #1976d2;
-    text-decoration: none;
-  }
-
-  .location:hover {
-    background: #bbddf3;
-    text-decoration: underline;
-  }
-
-  .time {
-    background: #f3e5f5;
-    color: #7b1fa2;
-  }
-
-  /* Characters toggle */
-  .characters-dropdown {
-    position: static;
-  }
-
-  .characters-toggle {
-    list-style: none;
-    cursor: pointer;
-    color: #444;
-  }
-
-  .characters-toggle::-webkit-details-marker {
-    display: none;
-  }
-
-  .characters-dropdown[open] .characters-toggle {
-    background: #e0e0e0;
-  }
-
-  .character-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    width: 100%;
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid #eee;
-  }
-
-  .characters-dropdown[open] {
-    flex-basis: 100%;
-  }
-
-  .characters-dropdown {
-    display: contents;
-  }
-
-  .character-link {
-    color: #444;
-    white-space: nowrap;
-    text-decoration: none;
-    cursor: pointer;
-  }
-
-  .character-link:hover {
-    background: #e0e0e0;
-  }
-
-  .scene-content {
-    line-height: 1.6;
-  }
-
-  .scene-divider {
-    height: 2px;
-    background: linear-gradient(to right, transparent, #ddd, transparent);
-    margin: 3rem 0;
-  }
-
+  /* ==========================================================================
+     --- SCREEN STYLES (Scoped to this component) ---
+     ========================================================================== */
+  .container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+  .episode-header { margin-bottom: 3rem; padding-bottom: 2rem; border-bottom: 3px solid #eee; }
+  .episode-header h1 { margin: 0 0 1rem 0; font-size: 2.5rem; }
+  .logline { font-size: 1.125rem; color: var(--text-secondary); font-style: italic; margin: 0 0 1.5rem 0; line-height: 1.6; }
+  .episode-meta { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+  .episode-number, .scene-count, .status { background: #f0f0f0; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.875rem; font-weight: bold; }
+  .episode-number { background: #bbddf3; color: #1a5a8a; }
+  .scene-count { background: #e8f5e8; color: #2e7d32; }
+  .status { background: #fff3e0; color: #e65100; text-transform: capitalize; }
+  
+  .print-button { display: inline-flex; align-items: center; gap: 0.5rem; background: #111827; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.875rem; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-left: auto; }
+  .print-button:hover { background: #374151; }
+  .no-scenes { text-align: center; padding: 3rem; color: var(--text-secondary); }
+  .episode-content { margin-top: 2rem; }
+  .scene-section { margin-bottom: 4rem; }
+  .scene-header { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #eee; }
+  .scene-header h2 a { text-decoration: none; color: inherit; }
+  .scene-header h2 a:hover { text-decoration: underline; color: var(--accent); }
+  .scene-meta { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+  .scene-num, .int-ext, .location, .time, .characters-toggle, .character-link { background: #f0f0f0; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.875rem; font-weight: bold; }
+  .scene-num { background: #e8f5e8; color: #2e7d32; }
+  .int-ext { background: #fff3e0; color: #e65100; }
+  .location { background: #e3f2fd; color: #1976d2; text-decoration: none; }
+  .location:hover { background: #bbddf3; text-decoration: underline; }
+  .time { background: #f3e5f5; color: #7b1fa2; }
+  .characters-dropdown { display: contents; }
+  .characters-toggle { list-style: none; cursor: pointer; color: #444; }
+  .characters-toggle::-webkit-details-marker { display: none; }
+  .characters-dropdown[open] .characters-toggle { background: #e0e0e0; }
+  .character-list { display: flex; flex-wrap: wrap; gap: 0.5rem; width: 100%; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #eee; }
+  .characters-dropdown[open] { flex-basis: 100%; }
+  .character-link { color: #444; white-space: nowrap; text-decoration: none; cursor: pointer; }
+  .character-link:hover { background: #e0e0e0; }
+  .scene-content { line-height: 1.6; }
+  .scene-divider { height: 2px; background: linear-gradient(to right, transparent, #ddd, transparent); margin: 3rem 0; }
+  
   @media (max-width: 768px) {
-    .container {
-      padding: 1rem;
+    .container { padding: 1rem; }
+    .episode-header h1 { font-size: 2rem; }
+    .print-button { width: 100%; margin-top: 0.5rem; justify-content: center; }
+  }
+</style>
+
+<style is:global>
+  /* ==========================================================================
+     --- THE PERFECT "CHARACTER COUNT" SCREENPLAY PRINT FORMATTING ---
+     ========================================================================== */
+  @media print {
+    /* 1. Page settings & Numbering setup */
+    @page {
+      size: letter;
+      margin: 1.0in 1.0in 1.0in 1.5in !important;
+      
+      /* The official CSS spec for page numbers */
+      @top-right {
+        content: counter(page) ".";
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 12pt;
+      }
     }
 
-    .episode-header h1 {
-      font-size: 2rem;
+    body {
+      counter-reset: page; /* Initialize the page counter */
     }
 
-    .episode-meta {
-      gap: 0.5rem;
+    /* 2. NUCLEAR HEADER/UI WIPER */
+    header, nav, footer, aside, 
+    .episode-header, .scene-header, .scene-divider, .no-print,
+    [class*="nav" i], [class*="menu" i], [class*="breadcrumb" i] {
+      display: none !important;
     }
 
-    .scene-meta {
-      gap: 0.25rem;
+    /* 3. Strip all flex/grid inherited paddings */
+    body, html, main, .container, .episode-content, .scene-section, .scene-content, .screenplay-root {
+      display: block !important;
+      position: static !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
     }
 
-    .scene-num,
-    .int-ext,
-    .location,
-    .time,
-    .characters-toggle,
-    .character-link {
-      padding: 0.375rem 0.75rem;
-      font-size: 0.75rem;
+    /* 4. Base Typography */
+    .screenplay-root, .screenplay-root * {
+      font-family: 'Courier New', Courier, monospace !important;
+      font-size: 12pt !important;
+      line-height: 1.15 !important;
+      color: #000 !important;
+    }
+
+    /* 5. True Screenplay Formatting using 'ch' (Character) units!
+       In Courier 12pt, 10ch = exactly 1.0 inch. This bypasses browser DPI scaling errors. */
+
+    /* SLUGLINE */
+    .screenplay-root h1, .screenplay-root h2, .screenplay-root h3,
+    .screenplay-root .scene, .screenplay-root [class*="scene" i] {
+      text-transform: uppercase !important;
+      font-weight: normal !important; 
+      margin: 24pt 0 12pt 0 !important;
+      page-break-after: avoid !important;
+    }
+
+    /* ACTION */
+    .screenplay-root p, .screenplay-root .action, .screenplay-root [class*="action" i] {
+      margin: 0 0 12pt 0 !important;
+      width: auto !important;
+      text-align: left !important;
+    }
+
+    /* CHARACTER */
+    .screenplay-root .character, .screenplay-root [class*="character" i] {
+      text-transform: uppercase !important;
+      font-weight: normal !important;
+      /* 20 characters = exactly 2.0 inches from the left text boundary */
+      margin: 12pt 0 0 20ch !important;
+      max-width: 40ch !important;
+      display: block !important;
+      page-break-after: avoid !important;
+    }
+
+    /* PARENTHETICAL */
+    .screenplay-root .parenthetical, .screenplay-root [class*="parenthetical" i] {
+      /* 15 characters = exactly 1.5 inches */
+      margin: 0 0 0 15ch !important;
+      max-width: 30ch !important; /* Approx 2.8 inches */
+      width: 100% !important; 
+      display: block !important;
+      page-break-after: avoid !important;
+    }
+
+    /* DIALOGUE */
+    .screenplay-root .dialogue, .screenplay-root [class*="dialogue" i] {
+      /* 10 characters = exactly 1.0 inch */
+      margin: 0 0 12pt 10ch !important;
+      max-width: 35ch !important; /* Exactly 3.5 inches wide */
+      width: 100% !important; 
+      display: block !important;
+      orphans: 2;
+      widows: 2;
+    }
+
+    /* TRANSITION */
+    .screenplay-root .transition, .screenplay-root [class*="transition" i] {
+      text-transform: uppercase !important;
+      /* 40 characters = exactly 4.0 inches */
+      margin: 12pt 0 12pt 40ch !important;
+      text-align: left !important;
+      page-break-before: avoid !important;
     }
   }
 </style>

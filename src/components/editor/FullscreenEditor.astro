@@ -1,0 +1,685 @@
+---
+/**
+ * FullscreenEditor.astro
+ * 
+ * Fullscreen side-by-side editor matching the scene editor exactly.
+ * Includes frontmatter placeholder, cursor highlighting, and all scene editor features.
+ */
+
+// import '@/styles/pages/scenes/slug.css';
+---
+
+<div class="editor-preview-wrapper editing" id="fullscreen-editor-wrapper">
+  <!-- Shared Header -->
+  <div class="editor-shared-header" id="fullscreen-editor-header">
+    <div class="editor-header-content">
+      <h3>Edit Content</h3>
+      <div class="editor-actions">
+        <button class="btn-save" id="fullscreen-btn-save" type="button">Download File</button>
+        <button class="btn-cancel" id="fullscreen-btn-cancel" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side-by-side Editor and Preview -->
+  <div class="editor-preview-container editing" id="fullscreen-editor-container">
+    <div class="editor-scroll-sync" id="fullscreen-scroll-sync">
+      <!-- Editor Panel -->
+      <div class="editor-panel" id="fullscreen-editor-panel">
+        <textarea 
+          class="editor-textarea" 
+          id="fullscreen-textarea"
+          spellcheck="false"
+          placeholder="Content will appear here..."
+        ></textarea>
+      </div>
+
+      <!-- Resize Handle -->
+      <div class="resize-handle" id="fullscreen-resize-handle" aria-hidden="true"></div>
+
+      <!-- Preview Panel -->
+      <div class="preview-panel" id="fullscreen-preview-panel">
+        <div class="content">
+          <div class="screenplay-page" id="fullscreen-preview">
+            <!-- Preview content -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style is:global>
+  /* ═══════════════════════════════════════════
+    Editor shared header
+  ═══════════════════════════════════════════ */
+
+  .editor-shared-header {
+    flex-shrink: 0;
+  }
+
+  .editor-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    border-bottom: 1px dotted var(--accent);
+    background: var(--blue-subtle);
+  }
+
+  .editor-header-content h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .editor-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .btn-save,
+  .btn-cancel {
+    padding: 0.375rem .75rem;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-save { background: #2e7d32; color: white; }
+  .btn-save:hover { background: #1b5e20; }
+  .btn-cancel { background: var(--text-secondary); color: var(--text-primary); }
+  .btn-cancel:hover { background: #d0d0d0; }
+
+  /* ═══════════════════════════════════════════
+   Editor / Preview split layout
+   ═══════════════════════════════════════════ */
+
+  .editor-preview-container {
+    display: block;
+  }
+
+  #editor-preview-wrapper.editing {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 9999;
+    background: var(--bg, #1a1a1a);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 3px solid var(--accent-subtle);
+  }
+
+  #editor-preview-wrapper.editing #editor-preview-container {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Scroll sync row — panels handle their own overflow */
+  .editor-scroll-sync {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ─── Resize handle ─── */
+  .resize-handle {
+    width: 6px;
+    background: #d0d0d0;
+    cursor: col-resize;
+    flex-shrink: 0;
+    position: relative;
+    transition: background 0.15s;
+  }
+
+  .resize-handle:hover,
+  .resize-handle.dragging {
+    background: #1976d2;
+  }
+
+  .resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 40px;
+    background: currentColor;
+    border-radius: 2px;
+    opacity: 0.4;
+  }
+
+  /* ─── Editor panel ─── */
+  .editor-scroll-sync .editor-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 200px;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* ─── Textarea ─── */
+  .editor-textarea {
+    flex: 1;
+    padding: 1.5rem;
+    border: none;
+    resize: none;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 14px;
+    line-height: 1.75;
+    overflow: visible;
+    height: auto;
+    min-height: 0;
+    width: 100%;
+    background: var(--bg-card-subtle);
+    color: var(--text-primary);
+    box-sizing: border-box;
+    caret-color: var(--accent);
+    font-synthesis: none;
+  }
+
+  .editor-textarea:focus {
+    outline: none;
+  }
+
+  /* ─── Preview panel ─── */
+  .editor-scroll-sync .preview-panel {
+    flex: 1;
+    min-width: 200px;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+  }
+
+  /* Strip page chrome in editor mode */
+  .editor-preview-container.editing .content {
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    justify-content: flex-start;
+  }
+
+  .editor-preview-container.editing .screenplay-page {
+    width: 100%;
+    min-height: unset;
+    box-shadow: none;
+    padding: 1rem 1.5rem;
+    background: transparent;
+  }
+
+  /* Fullscreen overlay */
+  #fullscreen-editor-wrapper {
+    display: none;
+  }
+
+  #fullscreen-editor-wrapper.editing {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 9999;
+    background: var(--bg, #1a1a1a);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 3px solid var(--accent-subtle);
+  }
+
+  #fullscreen-editor-wrapper.editing #fullscreen-editor-container {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Scroll sync row */
+  #fullscreen-scroll-sync {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Editor panel */
+  #fullscreen-scroll-sync #fullscreen-editor-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 200px;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* Preview panel */
+  #fullscreen-scroll-sync #fullscreen-preview-panel {
+    flex: 1;
+    min-width: 200px;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 14px;
+  }
+
+  /* Preview content wrapper */
+  #fullscreen-preview-panel .content {
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    justify-content: flex-start;
+  }
+
+  /* #fullscreen-preview-panel .screenplay-page {
+    width: 100%;
+    min-height: unset;
+    box-shadow: none;
+    padding: 1rem 1.5rem;
+    background: transparent;
+  } */
+
+  #fullscreen-preview-panel ul {
+    list-style: disc;
+    padding-left: 1.5em;
+    margin-bottom: 1em;
+  }
+
+  #fullscreen-preview-panel ol {
+    list-style: decimal;
+    padding-left: 1.5em;
+    margin-bottom: 1em;
+  }
+
+  #fullscreen-preview-panel li {
+    margin-bottom: 0.4em;
+  }
+
+  .preview-panel ul {
+    list-style: disc;
+    padding-left: 1.5em;
+    margin-bottom: 1em;
+  }
+
+  .preview-panel ol {
+    list-style: decimal;
+    padding-left: 1.5em;
+    margin-bottom: 1em;
+  }
+
+  .preview-panel li {
+    padding-left: 1.5em;
+    margin-bottom: 0.4em;
+  }
+
+  
+  .preview-highlight {
+    background: rgba(170, 140, 33, 0.395);
+    outline: 1px solid rgba(232, 197, 71, 0.4);
+    transition: background 0.2s ease, outline 0.2s ease;
+  }
+
+  .frontmatter-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #bbb;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    border: 1px dashed #ddd;
+    background: #2000009f;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    /* margin-top: 3rem; */
+    user-select: none;
+    letter-spacing: 0.05em;
+  }
+</style>
+
+
+<script>
+  import {
+    countFrontmatterLines,
+  } from '../../utils/editor/sceneEditor';
+
+  class FullscreenEditor {
+    private wrapper: HTMLElement;
+    private textarea: HTMLTextAreaElement;
+    private preview: HTMLElement;
+    private saveBtn: HTMLButtonElement;
+    private cancelBtn: HTMLButtonElement;
+    private resizeHandle: HTMLElement;
+    private editorPanel: HTMLElement;
+    private previewPanel: HTMLElement;
+    private isDragging = false;
+    private dragStartX = 0;
+    private dragStartWidth = 0;
+    private filename = 'content';
+    private syncingScroll = false;
+
+    constructor() {
+      this.wrapper = document.getElementById('fullscreen-editor-wrapper')!;
+      this.textarea = document.getElementById('fullscreen-textarea') as HTMLTextAreaElement;
+      this.preview = document.getElementById('fullscreen-preview')!;
+      this.saveBtn = document.getElementById('fullscreen-btn-save') as HTMLButtonElement;
+      this.cancelBtn = document.getElementById('fullscreen-btn-cancel') as HTMLButtonElement;
+      this.resizeHandle = document.getElementById('fullscreen-resize-handle')!;
+      this.editorPanel = document.getElementById('fullscreen-editor-panel')!;
+      this.previewPanel = document.getElementById('fullscreen-preview-panel')!;
+
+      this.init();
+    }
+
+    private init() {
+      // Save/Download button
+      this.saveBtn.addEventListener('click', () => this.downloadFile());
+
+      // Cancel button
+      this.cancelBtn.addEventListener('click', () => this.close());
+
+      // ESC key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.wrapper.classList.contains('editing')) {
+          this.close();
+        }
+      });
+
+      // Resize handle
+      this.setupResize();
+
+      // Sync scrolling
+      this.setupScrollSync();
+
+      // Live preview update
+      this.textarea.addEventListener('input', () => this.updatePreview());
+
+      // Cursor tracking for highlighting
+      this.textarea.addEventListener('keyup', () => this.onCursorMove());
+      this.textarea.addEventListener('click', () => this.onCursorMove());
+      this.textarea.addEventListener('keydown', () => this.onCursorMove());
+
+      // Prevent default wheel behavior on textarea
+      this.textarea.addEventListener('wheel', (e: WheelEvent) => {
+        e.preventDefault();
+        this.textarea.scrollTop += e.deltaY;
+      }, { passive: false });
+    }
+
+    private setupResize() {
+      this.resizeHandle.addEventListener('mousedown', (e: MouseEvent) => {
+        this.isDragging = true;
+        this.dragStartX = e.clientX;
+        this.dragStartWidth = this.editorPanel.getBoundingClientRect().width;
+        this.resizeHandle.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+      });
+
+      document.addEventListener('mousemove', (e: MouseEvent) => {
+        if (!this.isDragging) return;
+        const delta = e.clientX - this.dragStartX;
+        const newWidth = Math.max(200, this.dragStartWidth + delta);
+        this.editorPanel.style.width = `${newWidth}px`;
+        this.editorPanel.style.flex = 'none';
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (!this.isDragging) return;
+        this.isDragging = false;
+        this.resizeHandle.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      });
+    }
+
+    private setupScrollSync() {
+      this.textarea.addEventListener('scroll', () => {
+        if (this.syncingScroll) return;
+        this.syncingScroll = true;
+        const ratio = this.textarea.scrollTop / (this.textarea.scrollHeight - this.textarea.clientHeight);
+        this.previewPanel.scrollTop = ratio * (this.previewPanel.scrollHeight - this.previewPanel.clientHeight);
+        this.syncingScroll = false;
+      });
+
+      this.previewPanel.addEventListener('scroll', () => {
+        if (this.syncingScroll) return;
+        this.syncingScroll = true;
+        const ratio = this.previewPanel.scrollTop / (this.previewPanel.scrollHeight - this.previewPanel.clientHeight);
+        this.textarea.scrollTop = ratio * (this.textarea.scrollHeight - this.textarea.clientHeight);
+        this.syncingScroll = false;
+      });
+    }
+
+    private lineHeight(): number {
+      const lh = parseFloat(getComputedStyle(this.textarea).lineHeight);
+      return isNaN(lh) ? 22 : lh;
+    }
+
+    private escapeHtml(text: string): string {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    private renderMarkdown(markdown: string): string {
+      // Simple markdown renderer for basic formatting
+      const lines = markdown.split('\n');
+      let html = '';
+      let inCodeBlock = false;
+      let codeBlockLang = '';
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // Code blocks
+        if (line.startsWith('```')) {
+          if (inCodeBlock) {
+            html += '</code></pre>';
+            inCodeBlock = false;
+          } else {
+            codeBlockLang = line.slice(3).trim();
+            html += `<pre><code class="language-${codeBlockLang}">`;
+            inCodeBlock = true;
+          }
+          continue;
+        }
+        
+        if (inCodeBlock) {
+          html += this.escapeHtml(line) + '\n';
+          continue;
+        }
+
+        // Headers
+        if (line.startsWith('# ')) {
+          html += `<h1>${this.escapeHtml(line.slice(2))}</h1>`;
+        } else if (line.startsWith('## ')) {
+          html += `<h2>${this.escapeHtml(line.slice(3))}</h2>`;
+        } else if (line.startsWith('### ')) {
+          html += `<h3>${this.escapeHtml(line.slice(4))}</h3>`;
+        } else if (line.startsWith('#### ')) {
+          html += `<h4>${this.escapeHtml(line.slice(5))}</h4>`;
+        }
+        // Lists
+        else if (line.match(/^\s*[-*+]\s/)) {
+          const content = line.replace(/^\s*[-*+]\s/, '');
+          html += `<li>${this.escapeHtml(content)}</li>`;
+        }
+        // Blockquotes
+        else if (line.startsWith('> ')) {
+          html += `<blockquote>${this.escapeHtml(line.slice(2))}</blockquote>`;
+        }
+        // Empty lines
+        else if (line.trim() === '') {
+          html += '<br>';
+        }
+        // Regular paragraphs
+        else {
+          html += `<p>${this.escapeHtml(line)}</p>`;
+        }
+      }
+
+      return html;
+    }
+
+    private injectFrontmatterPlaceholder(fmLineCount: number): void {
+      // Remove any existing placeholder
+      this.preview.querySelector('.frontmatter-placeholder')?.remove();
+
+      if (fmLineCount <= 0) return;
+
+      const ph = document.createElement('div');
+      ph.className = 'frontmatter-placeholder';
+      ph.textContent = '— frontmatter —';
+      ph.style.height = `${fmLineCount * this.lineHeight()}px`;
+
+      this.preview.insertBefore(ph, this.preview.firstChild);
+    }
+
+    private updatePreview() {
+      const raw = this.textarea.value;
+      if (!raw || !raw.trim()) {
+        this.preview.innerHTML = '<p style="color: #999; text-align: center; padding: 2rem;">No content to preview</p>';
+        return;
+      }
+      
+      const fmLines = countFrontmatterLines(raw);
+      // Remove frontmatter from content
+      const lines = raw.split('\n');
+      let contentStart = 0;
+      if (lines[0] === '---') {
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i] === '---') {
+            contentStart = i + 1;
+            break;
+          }
+        }
+      }
+      const content = lines.slice(contentStart).join('\n');
+      const markdownHtml = this.renderMarkdown(content);
+
+      // Replace content but keep placeholder
+      this.preview.innerHTML = markdownHtml;
+      this.injectFrontmatterPlaceholder(fmLines);
+    }
+
+    private highlightPreviewElement(el: Element | null): void {
+      // Remove previous highlight
+      this.preview.querySelector('.preview-highlight')?.classList.remove('preview-highlight');
+      if (el) el.classList.add('preview-highlight');
+    }
+
+    private scrollPreviewToElement(el: Element | null): void {
+      if (!el) return;
+      const panelRect = this.previewPanel.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const offset = elRect.top - panelRect.top;
+      const target = this.previewPanel.scrollTop + offset - panelRect.height * 0.25;
+      this.previewPanel.scrollTop = target;
+    }
+
+    private getPreviewElementForLine(lineNum: number): Element | null {
+      // Simple line-to-element mapping
+      const children = Array.from(this.preview.children);
+      if (lineNum < children.length) {
+        return children[lineNum] as Element;
+      }
+      return children[children.length - 1] as Element || null;
+    }
+
+    private onCursorMove(): void {
+      const raw = this.textarea.value;
+      const cursorPos = this.textarea.selectionStart;
+      const cursorLine = raw.slice(0, cursorPos).split('\n').length - 1;
+
+      // Account for frontmatter when mapping to preview elements
+      const fmLines = countFrontmatterLines(raw);
+      const contentLine = Math.max(0, cursorLine - fmLines + 1);
+
+      const el = this.getPreviewElementForLine(contentLine);
+      this.highlightPreviewElement(el);
+      this.scrollPreviewToElement(el);
+    }
+
+    private downloadFile() {
+      const content = this.textarea.value;
+      if (!content.trim()) {
+        alert('No content to download');
+        return;
+      }
+
+      const blob = new Blob([content], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${this.filename}.mdx`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      // Show success message
+      const originalText = this.saveBtn.textContent;
+      this.saveBtn.textContent = 'Downloaded!';
+      this.saveBtn.disabled = true;
+      setTimeout(() => {
+        this.saveBtn.textContent = originalText;
+        this.saveBtn.disabled = false;
+      }, 2000);
+    }
+
+    public open(content: string, filename: string = 'content') {
+      this.filename = filename;
+      this.textarea.value = content;
+      this.wrapper.classList.add('editing');
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      document.getElementById('fullscreen-editor-container')!.style.display = 'flex';
+      
+      // Update preview after a brief delay to ensure DOM is ready
+      setTimeout(() => {
+        this.updatePreview();
+        this.onCursorMove();
+      }, 10);
+    }
+
+    public close() {
+      this.wrapper.classList.remove('editing');
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      this.textarea.value = '';
+      this.preview.innerHTML = '';
+      this.editorPanel.style.width = '';
+      this.editorPanel.style.flex = '';
+      
+      // Remove frontmatter placeholder
+      this.preview.querySelector('.frontmatter-placeholder')?.remove();
+    }
+  }
+
+  // Initialize fullscreen editor
+  let fullscreenEditorInstance: FullscreenEditor;
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    fullscreenEditorInstance = new FullscreenEditor();
+    
+    // Expose globally for other components to use
+    (window as any).openFullscreenEditor = (content: string, filename: string) => {
+      fullscreenEditorInstance.open(content, filename);
+    };
+  });
+</script>

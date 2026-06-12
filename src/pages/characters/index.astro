@@ -9,6 +9,7 @@
 import { getCollection, type CollectionEntry } from "astro:content";
 import IndexLayout from "../../layouts/IndexLayout.astro";
 import CharacterCard from "../../components/collection-cards/CharacterCard.astro";
+import TopFive from "../../components/projects/screenplays/stats/TopFive.astro";
 
 const characters = await getCollection("characters");
 
@@ -25,9 +26,13 @@ const sorted = characters.sort((a, b) => {
   count={sorted.length}
   description="All characters from all projects."
 >
+  <div>
+    <TopFive project="her-majestys-displeasure" type="characters-by-lines" />
+  </div>
   {sorted.length === 0 ? (
     <p class="empty">No characters yet.</p>
   ) : (
+    
     <ul class="grid grid--cols-3">
       {sorted.map((entry) => (
         <li>

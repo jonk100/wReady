@@ -1,0 +1,316 @@
+---
+/**
+ * NewSceneButton.astro
+ * 
+ * Button and sidebar for creating new scenes.
+ */
+
+import NewContentSidebar from './NewContentSidebar.astro';
+---
+
+<button class="new-scene-btn" type="button">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 5v14M5 12h14"/>
+  </svg>
+  New Scene
+</button>
+
+<NewContentSidebar contentType="scene" title="Create New Scene">
+  <div slot="form">
+    <div class="form-group">
+      <label for="scene-title">Title *</label>
+      <input 
+        type="text" 
+        id="scene-title" 
+        name="title" 
+        required 
+        placeholder="e.g., The Bathroom"
+      />
+      <span class="form-hint">The display title of your scene</span>
+    </div>
+
+    <div class="form-group">
+      <label for="scene-slug">Slug</label>
+      <input 
+        type="text" 
+        id="scene-slug" 
+        name="slug" 
+        placeholder="Auto-generated from title"
+      />
+      <span class="form-hint">URL-friendly identifier (leave blank to auto-generate)</span>
+    </div>
+
+    <div class="form-group">
+      <label for="scene-project">Project *</label>
+      <input 
+        type="text" 
+        id="scene-project" 
+        name="project" 
+        required
+        placeholder="e.g., her-majestys-displeasure"
+      />
+      <span class="form-hint">Project slug this scene belongs to</span>
+    </div>
+
+    <div class="form-group">
+      <label for="scene-episode">Episode</label>
+      <input 
+        type="text" 
+        id="scene-episode" 
+        name="episode" 
+        placeholder="e.g., episode-1"
+      />
+      <span class="form-hint">Episode slug (for TV series)</span>
+    </div>
+
+    <div class="form-group">
+      <label for="scene-number">Scene Number *</label>
+      <input 
+        type="number" 
+        id="scene-number" 
+        name="sceneNumber" 
+        required
+        min="1"
+        placeholder="e.g., 1"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="scene-description">Description</label>
+      <textarea 
+        id="scene-description" 
+        name="description" 
+        rows="2"
+        placeholder="Brief description of the scene..."
+      ></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="scene-location">Location(s)</label>
+      <input 
+        type="text" 
+        id="scene-location" 
+        name="location" 
+        placeholder="e.g., bathroom, office (comma-separated)"
+      />
+      <span class="form-hint">Comma-separated location slugs</span>
+    </div>
+
+    <div class="form-group">
+      <label for="scene-characters">Characters</label>
+      <input 
+        type="text" 
+        id="scene-characters" 
+        name="characters" 
+        placeholder="e.g., john-lennon, paul-mccartney (comma-separated)"
+      />
+      <span class="form-hint">Comma-separated character slugs</span>
+    </div>
+
+    <div class="form-group">
+      <label for="scene-time">Time of Day</label>
+      <select id="scene-time" name="timeOfDay">
+        <option value="">Select time...</option>
+        <option value="day">Day</option>
+        <option value="night">Night</option>
+        <option value="dawn">Dawn</option>
+        <option value="dusk">Dusk</option>
+        <option value="continuous">Continuous</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="scene-setting">Setting</label>
+      <select id="scene-setting" name="setting">
+        <option value="">Select setting...</option>
+        <option value="int">Interior (INT.)</option>
+        <option value="ext">Exterior (EXT.)</option>
+        <option value="int-ext">Interior/Exterior (INT./EXT.)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="scene-plots">Plot Threads</label>
+      <input 
+        type="text" 
+        id="scene-plots" 
+        name="plots" 
+        placeholder="e.g., main-plot-1, sub-plot-2 (comma-separated)"
+      />
+      <span class="form-hint">Comma-separated plot slugs</span>
+    </div>
+  </div>
+</NewContentSidebar>
+
+<style>
+  .new-scene-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+  }
+
+  .new-scene-btn:hover {
+    background: #388e3c;
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .new-scene-btn:active {
+    transform: translateY(0);
+  }
+
+  .new-scene-btn svg {
+    flex-shrink: 0;
+  }
+</style>
+
+<script>
+  import { createMDXContent, titleToSlug, type FrontmatterField } from '../../utils/editor/frontmatterUtils';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.querySelector('.new-scene-btn') as HTMLButtonElement;
+    const sidebar = document.querySelector('[data-content-type="scene"]') as HTMLElement & {
+      open?: () => void;
+      setContent?: (content: string) => void;
+      close?: () => void;
+    };
+
+    if (!btn || !sidebar) return;
+
+    // Open sidebar and auto-fill project if on project page
+    btn.addEventListener('click', () => {
+      if (sidebar.open) sidebar.open();
+      
+      // Auto-fill project from URL if on a project page
+      const pathMatch = window.location.pathname.match(/\/projects\/([^\/]+)/);
+      if (pathMatch) {
+        const projectSlug = pathMatch[1];
+        const projectInput = document.getElementById('scene-project') as HTMLInputElement;
+        if (projectInput && !projectInput.value) {
+          projectInput.value = projectSlug;
+        }
+      }
+    });
+
+    // Auto-generate slug from title
+    const titleInput = document.getElementById('scene-title') as HTMLInputElement;
+    const slugInput = document.getElementById('scene-slug') as HTMLInputElement;
+
+    titleInput?.addEventListener('input', () => {
+      if (!slugInput.value || slugInput.dataset.autoGenerated === 'true') {
+        slugInput.value = titleToSlug(titleInput.value);
+        slugInput.dataset.autoGenerated = 'true';
+      }
+    });
+
+    slugInput?.addEventListener('input', () => {
+      if (slugInput.value) {
+        slugInput.dataset.autoGenerated = 'false';
+      }
+    });
+
+    // Generate content from form
+    sidebar.addEventListener('generate-content', ((e: CustomEvent) => {
+      const form = e.detail.form as HTMLFormElement;
+      const formData = new FormData(form);
+
+      const fields: FrontmatterField[] = [
+        { name: 'title', value: formData.get('title') as string, type: 'string' },
+        { name: 'slug', value: (formData.get('slug') as string) || titleToSlug(formData.get('title') as string), type: 'string' },
+        { name: 'project', value: formData.get('project') as string, type: 'reference' },
+        { name: 'sceneNumber', value: parseInt(formData.get('sceneNumber') as string), type: 'number' },
+      ];
+
+      // Optional episode
+      const episode = formData.get('episode');
+      if (episode) {
+        fields.push({ name: 'episode', value: episode as string, type: 'reference' });
+      }
+
+      // Description
+      const description = formData.get('description');
+      if (description) {
+        fields.push({ name: 'description', value: description as string, type: 'string' });
+      }
+
+      // Location(s) - convert comma-separated to array
+      const location = formData.get('location') as string;
+      if (location) {
+        const locations = location.split(',').map(l => l.trim()).filter(Boolean);
+        fields.push({ name: 'location', value: locations, type: 'references' });
+      } else {
+        fields.push({ name: 'location', value: [], type: 'references' });
+      }
+
+      // Characters - convert comma-separated to array
+      const characters = formData.get('characters') as string;
+      if (characters) {
+        const charList = characters.split(',').map(c => c.trim()).filter(Boolean);
+        fields.push({ name: 'characters', value: charList, type: 'references' });
+      } else {
+        fields.push({ name: 'characters', value: [], type: 'references' });
+      }
+
+      // Time of day
+      const timeOfDay = formData.get('timeOfDay');
+      if (timeOfDay) {
+        fields.push({ name: 'timeOfDay', value: timeOfDay as string, type: 'string' });
+      }
+
+      // Setting
+      const setting = formData.get('setting');
+      if (setting) {
+        fields.push({ name: 'setting', value: setting as string, type: 'string' });
+      }
+
+      // Plots - convert comma-separated to array
+      const plots = formData.get('plots') as string;
+      if (plots) {
+        const plotList = plots.split(',').map(p => p.trim()).filter(Boolean);
+        fields.push({ name: 'plots', value: plotList, type: 'references' });
+      }
+
+      // Generate scene content with screenplay template
+      const sceneBody = `
+## Scene Content
+
+Write your scene here using the screenplay format:
+
+**Example:**
+
+s- INT. LOCATION - DAY
+
+a- Action description goes here.
+
+c- CHARACTER NAME
+d- Dialogue goes here.
+
+p- parenthetical
+d- More dialogue.
+
+t- CUT TO:
+`;
+
+      const content = createMDXContent(fields, sceneBody);
+      const filename = (formData.get('slug') as string) || titleToSlug(formData.get('title') as string) || 'new-scene';
+      
+      // Close sidebar and open fullscreen editor
+      if (sidebar.close) sidebar.close();
+      if ((window as any).openFullscreenEditor) {
+        (window as any).openFullscreenEditor(content, filename);
+      }
+    }) as EventListener);
+
+    // Download file - no longer needed, handled by fullscreen editor
+  });
+</script>

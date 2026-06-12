@@ -1,0 +1,567 @@
+---
+/**
+ * CharacterLines.astro
+ *
+ * Interactive stat card showing character dialogue and scene statistics.
+ * Click to expand and reveal: lines by episode, top locations, most lines scene, co-stars.
+ *
+ * @example
+ * <CharacterLines project="her-majestys-displeasure" character="band/john-lennon" />
+ */
+
+import { getCollection } from "astro:content";
+import { resolveCharacterId, labelFromId } from "../../../../utils/screenwriting/helpers";
+
+interface Props {
+  project: string;
+  character: string;
+}
+
+const { project, character } = Astro.props;
+
+const characterId = resolveCharacterId(project, character);
+
+// Fetch all scenes for this project
+let allScenes = await getCollection("scenes");
+allScenes = allScenes.filter((s) => s.data.project.id === project);
+
+// Count lines function
+function countLines(body: string, charId: string): number {
+  const slug = charId.split("/").pop()!.toLowerCase();
+  const cueRegex = /^c-(.+)$/gm;
+  let count = 0;
+  let match: RegExpExecArray | null;
+  while ((match = cueRegex.exec(body)) !== null) {
+    const raw = match[1]
+      .replace(/\(CONT'D\)/gi, "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+    if (raw === slug || slug.includes(raw)) count++;
+  }
+  return count;
+}
+
+// Total lines
+const totalLines = allScenes.reduce((total, scene) => {
+  if (!scene.body) return total;
+  return total + countLines(scene.body, characterId);
+}, 0);
+
+// Lines by episode
+const linesByEpisode = allScenes.reduce(
+  (acc, scene) => {
+    if (!scene.body) return acc;
+    const episodeId = scene.data.episode?.id;
+    if (!episodeId) return acc;
+    const lines = countLines(scene.body, characterId);
+    if (lines > 0) {
+      acc[episodeId] = (acc[episodeId] ?? 0) + lines;
+    }
+    return acc;
+  },
+  {} as Record<string, number>
+);
+
+// Top 3 locations
+const locationCounts = allScenes.reduce(
+  (acc, scene) => {
+    if (!scene.data.characters.some((c) => c.id === characterId)) return acc;
+    for (const loc of scene.data.location) {
+      acc[loc.id] = (acc[loc.id] ?? 0) + 1;
+    }
+    return acc;
+  },
+  {} as Record<string, number>
+);
+
+const topLocations = Object.entries(locationCounts)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 3);
+
+// Scene with most lines
+let maxLinesScene = { sceneId: "", lines: 0 };
+for (const scene of allScenes) {
+  if (!scene.body) continue;
+  const lines = countLines(scene.body, characterId);
+  if (lines > maxLinesScene.lines) {
+    maxLinesScene = { sceneId: scene.id, lines };
+  }
+}
+
+const sceneWithMostLines = allScenes.find((s) => s.id === maxLinesScene.sceneId);
+
+// Character with most co-appearances
+const coAppearances = allScenes.reduce(
+  (acc, scene) => {
+    const appearingCharacters = scene.data.characters.map((c) => c.id);
+    if (!appearingCharacters.includes(characterId)) return acc;
+    for (const charId of appearingCharacters) {
+      if (charId === characterId) continue;
+      acc[charId] = (acc[charId] ?? 0) + 1;
+    }
+    return acc;
+  },
+  {} as Record<string, number>
+);
+
+const topCoStars = Object.entries(coAppearances)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 2);
+
+const topCoStarCharacters = await Promise.all(
+  topCoStars.map(async ([id]) => {
+    try {
+      const chars = await getCollection("characters");
+      return chars.find((c) => c.id === id);
+    } catch {
+      return undefined;
+    }
+  })
+);
+
+// Top 2 scenes with most dialogue
+const sceneLinesCounts = allScenes.reduce(
+  (acc, scene) => {
+    if (!scene.body || !scene.data.characters.some((c) => c.id === characterId)) {
+      return acc;
+    }
+    const lines = countLines(scene.body, characterId);
+    if (lines > 0) {
+      acc.push({ sceneId: scene.id, lines, sceneNumber: scene.data.sceneNumber });
+    }
+    return acc;
+  },
+  [] as Array<{ sceneId: string; lines: number; sceneNumber: number }>
+);
+
+const topScenes = sceneLinesCounts
+  .sort((a, b) => b.lines - a.lines)
+  .slice(0, 2);
+
+const topSceneObjects = topScenes.map((s) =>
+  allScenes.find((scene) => scene.id === s.sceneId)
+);
+
+// Total scenes appearance count
+const sceneAppearances = allScenes.filter((s) =>
+  s.data.characters.some((c) => c.id === characterId)
+).length;
+
+// Average lines per scene
+const avgLinesPerScene =
+  sceneAppearances > 0
+    ? Math.round((totalLines / sceneAppearances) * 10) / 10
+    : 0;
+
+// Character rank (by total lines)
+const allCharacterLines = allScenes.reduce(
+  (acc, scene) => {
+    if (!scene.body) return acc;
+    for (const char of scene.data.characters) {
+      acc[char.id] = (acc[char.id] ?? 0) + countLines(scene.body, char.id);
+    }
+    return acc;
+  },
+  {} as Record<string, number>
+);
+
+const rankedCharacters = Object.entries(allCharacterLines)
+  .sort((a, b) => b[1] - a[1]);
+
+const characterRank = rankedCharacters.findIndex(([id]) => id === characterId) + 1;
+const totalCharacters = rankedCharacters.length;
+
+const label = labelFromId(characterId);
+---
+
+<div class="stats-card">
+  <!-- Collapsed: Main stat -->
+  <div class="stats-trigger">
+    <div class="stat-main">
+      <p class="stat-label">Total Lines</p>
+      <p class="stat-number">{totalLines}</p>
+      <p class="stat-rank">#{characterRank} of {totalCharacters} characters</p>
+    </div>
+    <div class="chevron">↓</div>
+  </div>
+
+  <!-- Expanded: Additional stats -->
+  <div class="stats-expanded">
+    <div class="stats-grid">
+      <!-- By Episode -->
+      <div class="stat-group">
+        <h3>By Episode</h3>
+        <div class="stat-list">
+          {Object.entries(linesByEpisode).length > 0 ? (
+            Object.entries(linesByEpisode)
+              .sort((a, b) => b[1] - a[1])
+              .map(([id, lines]) => (
+                <div class="stat-item">
+                  <span class="stat-name">{labelFromId(id)}</span>
+                  <span class="stat-value">{lines}</span>
+                </div>
+              ))
+          ) : (
+            <p class="no-data">No episodes</p>
+          )}
+        </div>
+      </div>
+
+      <!-- Top Locations -->
+      <div class="stat-group">
+        <h3>Top Locations</h3>
+        <div class="stat-list">
+          {topLocations.length > 0 ? (
+            topLocations.map(([id, count]) => (
+              <div class="stat-item">
+                <span class="stat-name">{labelFromId(id)}</span>
+                <span class="stat-value">{count}</span>
+              </div>
+            ))
+          ) : (
+            <p class="no-data">No locations</p>
+          )}
+        </div>
+      </div>
+
+      <!-- Most Dialogue Scenes (Top 2) -->
+      <div class="stat-group">
+        <h3>Most Dialogue</h3>
+        <div class="stat-list">
+          {topSceneObjects.length > 0 ? (
+            topSceneObjects.map((scene, idx) => (
+              scene && (
+                <a href={`/scenes/${scene.id}`} class="scene-link">
+                  <div class="stat-item">
+                    <span class="stat-name">Scene {scene.data.sceneNumber}</span>
+                    <span class="stat-value">{topScenes[idx].lines}</span>
+                  </div>
+                  <span class="link-icon">→</span>
+                </a>
+              )
+            ))
+          ) : (
+            <p class="no-data">No scenes</p>
+          )}
+        </div>
+      </div>
+
+      <!-- Top Co-Stars (Top 2) -->
+      <div class="stat-group">
+        <h3>Most Scenes With</h3>
+        <div class="stat-list">
+          {topCoStarCharacters.length > 0 && topCoStars.length > 0 ? (
+            topCoStarCharacters.map((char, idx) => (
+              char && (
+                <a href={`/characters/${char.id}`} class="character-link">
+                  <div class="stat-item">
+                    <span class="stat-name">{char.data.name}</span>
+                    <span class="stat-value">{topCoStars[idx][1]}</span>
+                  </div>
+                  <span class="link-icon">→</span>
+                </a>
+              )
+            ))
+          ) : (
+            <p class="no-data">No co-stars</p>
+          )}
+        </div>
+      </div>
+
+      <!-- Scene Appearances -->
+      <div class="stat-group">
+        <h3>Scene Appearances</h3>
+        <div class="stat-item">
+          <span class="stat-name">Total Scenes</span>
+          <span class="stat-value">{sceneAppearances}</span>
+        </div>
+      </div>
+
+      <!-- Average Lines Per Scene -->
+      <div class="stat-group">
+        <h3>Per Scene Average</h3>
+        <div class="stat-item">
+          <span class="stat-name">Lines/Scene</span>
+          <span class="stat-value">{avgLinesPerScene}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const cards = document.querySelectorAll(".stats-card");
+
+  cards.forEach((card) => {
+    const trigger = card.querySelector(".stats-trigger") as HTMLElement;
+    const expanded = card.querySelector(".stats-expanded") as HTMLElement;
+    let isExpanded = false;
+
+    trigger.addEventListener("click", () => {
+      isExpanded = !isExpanded;
+      card.classList.toggle("is-expanded", isExpanded);
+
+      if (isExpanded) {
+        const rect = trigger.getBoundingClientRect();
+        expanded.style.left = `${rect.right + 16}px`;
+        expanded.style.top = `${rect.top}px`;
+        expanded.style.opacity = "1";
+        expanded.style.pointerEvents = "auto";
+      } else {
+        expanded.style.opacity = "0";
+        expanded.style.pointerEvents = "none";
+      }
+    });
+
+    // Close when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!card.contains(e.target as Node) && isExpanded) {
+        isExpanded = false;
+        card.classList.remove("is-expanded");
+        expanded.style.opacity = "0";
+        expanded.style.pointerEvents = "none";
+      }
+    });
+  });
+</script>
+
+<style>
+  .stats-card {
+    background: linear-gradient(
+      135deg,
+      rgba(var(--bg-raised-rgb), 0.6),
+      rgba(var(--bg-card-rgb), 0.4)
+    );
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: visible;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    cursor: pointer;
+    position: relative;
+  }
+
+  .stats-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.1);
+  }
+
+  .stats-card.is-expanded {
+    box-shadow: 0 12px 48px rgba(var(--accent-rgb), 0.15);
+  }
+
+  /* Collapsed state */
+  .stats-trigger {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    gap: 1rem;
+  }
+
+  .stat-main {
+    flex: 1;
+    text-align: center;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-secondary);
+    margin: 0;
+    transition: color 0.2s;
+  }
+
+  .stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0.25rem 0 0 0;
+    font-family: "Courier New", monospace;
+  }
+
+  .stat-rank {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin: 0.5rem 0 0 0;
+    font-weight: 500;
+  }
+
+  .chevron {
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .stats-card.is-expanded .chevron {
+    transform: rotate(180deg);
+  }
+
+  /* Expanded state - pops out to the right */
+  .stats-expanded {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+      transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform: translateX(-30px);
+    z-index: 1000;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(var(--bg-card-rgb), 0.95);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  }
+
+  .stats-card.is-expanded .stats-expanded {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0) translateY(-400px);
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  .stat-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .stat-group h3 {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--accent-dim);
+    margin: 0;
+  }
+
+  .stat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: rgba(var(--bg-raised-rgb), 0.8);
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+    font-size: 0.875rem;
+    transition: all 0.2s;
+  }
+
+  .stat-item:hover {
+    background: rgba(var(--accent-rgb), 0.08);
+    border-color: var(--accent);
+  }
+
+  .stat-name {
+    color: var(--text-primary);
+    font-weight: 500;
+    flex: 1;
+  }
+
+  .stat-value {
+    color: var(--accent);
+    font-weight: 700;
+    font-family: "Courier New", monospace;
+    min-width: 2rem;
+    text-align: right;
+  }
+
+  .scene-link,
+  .character-link {
+    position: relative;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: all 0.2s;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .scene-link:hover,
+  .character-link:hover {
+    transform: translateX(4px);
+  }
+
+  .link-icon {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+    font-size: 1rem;
+  }
+
+  .scene-link:hover .link-icon,
+  .character-link:hover .link-icon {
+    opacity: 1;
+  }
+
+  .no-data {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 0;
+    padding: 0.5rem;
+    text-align: center;
+  }
+
+  @media (max-width: 1200px) {
+    .stats-expanded {
+      width: 600px;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .stats-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .stats-expanded {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: calc(100vw - 2rem);
+      max-width: 500px;
+      transform: translate(-50%, -50%) scale(0.9);
+    }
+
+    .stats-card.is-expanded .stats-expanded {
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .stat-number {
+      font-size: 2rem;
+    }
+
+    .stats-trigger {
+      padding: 1rem;
+      display: none;
+    }
+  }
+</style>

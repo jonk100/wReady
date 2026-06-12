@@ -1,0 +1,312 @@
+---
+/**
+ * NewLocationButton.astro
+ * 
+ * Button and sidebar for creating new locations.
+ */
+
+import NewContentSidebar from './NewContentSidebar.astro';
+---
+
+<button class="new-location-btn" type="button">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 5v14M5 12h14"/>
+  </svg>
+  New Location
+</button>
+
+<NewContentSidebar contentType="location" title="Create New Location">
+  <div slot="form">
+    <div class="form-group">
+      <label for="location-name">Name *</label>
+      <input 
+        type="text" 
+        id="location-name" 
+        name="name" 
+        required 
+        placeholder="e.g., Abbey Road Studios"
+      />
+      <span class="form-hint">Full location name</span>
+    </div>
+
+    <div class="form-group">
+      <label for="location-slug">Slug</label>
+      <input 
+        type="text" 
+        id="location-slug" 
+        name="slug" 
+        placeholder="Auto-generated from name"
+      />
+      <span class="form-hint">URL-friendly identifier (leave blank to auto-generate)</span>
+    </div>
+
+    <div class="form-group">
+      <label for="location-type">Type</label>
+      <select id="location-type" name="type">
+        <option value="">Select type...</option>
+        <option value="interior">Interior</option>
+        <option value="exterior">Exterior</option>
+        <option value="both">Interior/Exterior</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="location-description">Description</label>
+      <textarea 
+        id="location-description" 
+        name="description" 
+        rows="3"
+        placeholder="Brief location description..."
+      ></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="location-address">Address/Location</label>
+      <input 
+        type="text" 
+        id="location-address" 
+        name="address" 
+        placeholder="e.g., 3 Abbey Road, St John's Wood, London"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="location-city">City</label>
+      <input 
+        type="text" 
+        id="location-city" 
+        name="city" 
+        placeholder="e.g., London"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="location-country">Country</label>
+      <input 
+        type="text" 
+        id="location-country" 
+        name="country" 
+        placeholder="e.g., United Kingdom"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="location-projects">Projects</label>
+      <input 
+        type="text" 
+        id="location-projects" 
+        name="projects" 
+        placeholder="e.g., project-1, project-2 (comma-separated)"
+      />
+      <span class="form-hint">Comma-separated project slugs this location appears in</span>
+    </div>
+
+    <div class="form-group">
+      <label for="location-significance">Significance</label>
+      <select id="location-significance" name="significance">
+        <option value="">Select significance...</option>
+        <option value="primary">Primary Location</option>
+        <option value="recurring">Recurring Location</option>
+        <option value="minor">Minor Location</option>
+        <option value="background">Background</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="location-atmosphere">Atmosphere/Mood</label>
+      <input 
+        type="text" 
+        id="location-atmosphere" 
+        name="atmosphere" 
+        placeholder="e.g., tense, creative, oppressive"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="location-features">Notable Features</label>
+      <textarea 
+        id="location-features" 
+        name="features" 
+        rows="2"
+        placeholder="Key features or characteristics of this location..."
+      ></textarea>
+    </div>
+  </div>
+</NewContentSidebar>
+
+<style>
+  .new-location-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: #9c27b0;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(156, 39, 176, 0.3);
+  }
+
+  .new-location-btn:hover {
+    background: #7b1fa2;
+    box-shadow: 0 4px 8px rgba(156, 39, 176, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .new-location-btn:active {
+    transform: translateY(0);
+  }
+
+  .new-location-btn svg {
+    flex-shrink: 0;
+  }
+</style>
+
+<script>
+  import { createMDXContent, titleToSlug, type FrontmatterField } from '../../utils/editor/frontmatterUtils';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.querySelector('.new-location-btn') as HTMLButtonElement;
+    const sidebar = document.querySelector('[data-content-type="location"]') as HTMLElement & {
+      open?: () => void;
+      setContent?: (content: string) => void;
+      close?: () => void;
+    };
+
+    if (!btn || !sidebar) return;
+
+    // Open sidebar and auto-fill projects if on project page
+    btn.addEventListener('click', () => {
+      if (sidebar.open) sidebar.open();
+      
+      // Auto-fill projects from URL if on a project page
+      const pathMatch = window.location.pathname.match(/\/projects\/([^\/]+)/);
+      if (pathMatch) {
+        const projectSlug = pathMatch[1];
+        const projectsInput = document.getElementById('location-projects') as HTMLInputElement;
+        if (projectsInput && !projectsInput.value) {
+          projectsInput.value = projectSlug;
+        }
+      }
+    });
+
+    // Auto-generate slug from name
+    const nameInput = document.getElementById('location-name') as HTMLInputElement;
+    const slugInput = document.getElementById('location-slug') as HTMLInputElement;
+
+    nameInput?.addEventListener('input', () => {
+      if (!slugInput.value || slugInput.dataset.autoGenerated === 'true') {
+        slugInput.value = titleToSlug(nameInput.value);
+        slugInput.dataset.autoGenerated = 'true';
+      }
+    });
+
+    slugInput?.addEventListener('input', () => {
+      if (slugInput.value) {
+        slugInput.dataset.autoGenerated = 'false';
+      }
+    });
+
+    // Generate content from form
+    sidebar.addEventListener('generate-content', ((e: CustomEvent) => {
+      const form = e.detail.form as HTMLFormElement;
+      const formData = new FormData(form);
+
+      const fields: FrontmatterField[] = [
+        { name: 'name', value: formData.get('name') as string, type: 'string' },
+        { name: 'slug', value: (formData.get('slug') as string) || titleToSlug(formData.get('name') as string), type: 'string' },
+      ];
+
+      // Optional type
+      const type = formData.get('type');
+      if (type) {
+        fields.push({ name: 'type', value: type as string, type: 'string' });
+      }
+
+      // Description
+      const description = formData.get('description');
+      if (description) {
+        fields.push({ name: 'description', value: description as string, type: 'string' });
+      }
+
+      // Address
+      const address = formData.get('address');
+      if (address) {
+        fields.push({ name: 'address', value: address as string, type: 'string' });
+      }
+
+      // City
+      const city = formData.get('city');
+      if (city) {
+        fields.push({ name: 'city', value: city as string, type: 'string' });
+      }
+
+      // Country
+      const country = formData.get('country');
+      if (country) {
+        fields.push({ name: 'country', value: country as string, type: 'string' });
+      }
+
+      // Projects - convert comma-separated to array
+      const projects = formData.get('projects') as string;
+      if (projects) {
+        const projectList = projects.split(',').map(p => p.trim()).filter(Boolean);
+        fields.push({ name: 'projects', value: projectList, type: 'references' });
+      }
+
+      // Significance
+      const significance = formData.get('significance');
+      if (significance) {
+        fields.push({ name: 'significance', value: significance as string, type: 'string' });
+      }
+
+      // Atmosphere
+      const atmosphere = formData.get('atmosphere');
+      if (atmosphere) {
+        fields.push({ name: 'atmosphere', value: atmosphere as string, type: 'string' });
+      }
+
+      // Features
+      const features = formData.get('features');
+      if (features) {
+        fields.push({ name: 'features', value: features as string, type: 'string' });
+      }
+
+      // Generate location content
+      const locationBody = `
+## Overview
+
+Detailed description of the location...
+
+## Physical Description
+
+Describe the physical appearance, layout, and notable features...
+
+## Atmosphere
+
+The mood, feeling, and emotional tone of this location...
+
+## Historical Context
+
+Any relevant history or background about this location...
+
+## Scenes Set Here
+
+List of key scenes that take place at this location...
+`;
+
+      const content = createMDXContent(fields, locationBody);
+      const filename = (formData.get('slug') as string) || titleToSlug(formData.get('name') as string) || 'new-location';
+      
+      // Close sidebar and open fullscreen editor
+      if (sidebar.close) sidebar.close();
+      if ((window as any).openFullscreenEditor) {
+        (window as any).openFullscreenEditor(content, filename);
+      }
+    }) as EventListener);
+  });
+</script>

@@ -1,0 +1,296 @@
+---
+/**
+ * NewCharacterButton.astro
+ * 
+ * Button and sidebar for creating new characters.
+ */
+
+import NewContentSidebar from './NewContentSidebar.astro';
+---
+
+<button class="new-character-btn" type="button">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 5v14M5 12h14"/>
+  </svg>
+  New Character
+</button>
+
+<NewContentSidebar contentType="character" title="Create New Character">
+  <div slot="form">
+    <div class="form-group">
+      <label for="character-name">Name *</label>
+      <input 
+        type="text" 
+        id="character-name" 
+        name="name" 
+        required 
+        placeholder="e.g., John Lennon"
+      />
+      <span class="form-hint">Full character name</span>
+    </div>
+
+    <div class="form-group">
+      <label for="character-slug">Slug</label>
+      <input 
+        type="text" 
+        id="character-slug" 
+        name="slug" 
+        placeholder="Auto-generated from name"
+      />
+      <span class="form-hint">URL-friendly identifier (leave blank to auto-generate)</span>
+    </div>
+
+    <div class="form-group">
+      <label for="character-role">Role</label>
+      <select id="character-role" name="role">
+        <option value="">Select role...</option>
+        <option value="protagonist">Protagonist</option>
+        <option value="antagonist">Antagonist</option>
+        <option value="supporting">Supporting</option>
+        <option value="minor">Minor</option>
+        <option value="extra">Extra</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="character-description">Description</label>
+      <textarea 
+        id="character-description" 
+        name="description" 
+        rows="3"
+        placeholder="Brief character description..."
+      ></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="character-age">Age</label>
+      <input 
+        type="text" 
+        id="character-age" 
+        name="age" 
+        placeholder="e.g., 27, late 30s, elderly"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="character-occupation">Occupation</label>
+      <input 
+        type="text" 
+        id="character-occupation" 
+        name="occupation" 
+        placeholder="e.g., Musician, Detective"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="character-actor">Actor/Actress</label>
+      <input 
+        type="text" 
+        id="character-actor" 
+        name="actor" 
+        placeholder="e.g., michael-dorman (actor slug)"
+      />
+      <span class="form-hint">Actor slug from actors collection</span>
+    </div>
+
+    <div class="form-group">
+      <label for="character-projects">Projects</label>
+      <input 
+        type="text" 
+        id="character-projects" 
+        name="projects" 
+        placeholder="e.g., project-1, project-2 (comma-separated)"
+      />
+      <span class="form-hint">Comma-separated project slugs this character appears in</span>
+    </div>
+
+    <div class="form-group">
+      <label for="character-traits">Key Traits</label>
+      <input 
+        type="text" 
+        id="character-traits" 
+        name="traits" 
+        placeholder="e.g., intelligent, cynical, loyal (comma-separated)"
+      />
+      <span class="form-hint">Comma-separated character traits</span>
+    </div>
+
+    <div class="form-group">
+      <label for="character-relationships">Relationships</label>
+      <textarea 
+        id="character-relationships" 
+        name="relationships" 
+        rows="2"
+        placeholder="Key relationships with other characters..."
+      ></textarea>
+    </div>
+  </div>
+</NewContentSidebar>
+
+<style>
+  .new-character-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: #ff9800;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+  }
+
+  .new-character-btn:hover {
+    background: #f57c00;
+    box-shadow: 0 4px 8px rgba(255, 152, 0, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .new-character-btn:active {
+    transform: translateY(0);
+  }
+
+  .new-character-btn svg {
+    flex-shrink: 0;
+  }
+</style>
+
+<script>
+  import { createMDXContent, titleToSlug, type FrontmatterField } from '../../utils/editor/frontmatterUtils';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.querySelector('.new-character-btn') as HTMLButtonElement;
+    const sidebar = document.querySelector('[data-content-type="character"]') as HTMLElement & {
+      open?: () => void;
+      setContent?: (content: string) => void;
+      close?: () => void;
+    };
+
+    if (!btn || !sidebar) return;
+
+    // Open sidebar and auto-fill projects if on project page
+    btn.addEventListener('click', () => {
+      if (sidebar.open) sidebar.open();
+      
+      // Auto-fill projects from URL if on a project page
+      const pathMatch = window.location.pathname.match(/\/projects\/([^\/]+)/);
+      if (pathMatch) {
+        const projectSlug = pathMatch[1];
+        const projectsInput = document.getElementById('character-projects') as HTMLInputElement;
+        if (projectsInput && !projectsInput.value) {
+          projectsInput.value = projectSlug;
+        }
+      }
+    });
+
+    // Auto-generate slug from name
+    const nameInput = document.getElementById('character-name') as HTMLInputElement;
+    const slugInput = document.getElementById('character-slug') as HTMLInputElement;
+
+    nameInput?.addEventListener('input', () => {
+      if (!slugInput.value || slugInput.dataset.autoGenerated === 'true') {
+        slugInput.value = titleToSlug(nameInput.value);
+        slugInput.dataset.autoGenerated = 'true';
+      }
+    });
+
+    slugInput?.addEventListener('input', () => {
+      if (slugInput.value) {
+        slugInput.dataset.autoGenerated = 'false';
+      }
+    });
+
+    // Generate content from form
+    sidebar.addEventListener('generate-content', ((e: CustomEvent) => {
+      const form = e.detail.form as HTMLFormElement;
+      const formData = new FormData(form);
+
+      const fields: FrontmatterField[] = [
+        { name: 'name', value: formData.get('name') as string, type: 'string' },
+        { name: 'slug', value: (formData.get('slug') as string) || titleToSlug(formData.get('name') as string), type: 'string' },
+      ];
+
+      // Optional role
+      const role = formData.get('role');
+      if (role) {
+        fields.push({ name: 'role', value: role as string, type: 'string' });
+      }
+
+      // Description
+      const description = formData.get('description');
+      if (description) {
+        fields.push({ name: 'description', value: description as string, type: 'string' });
+      }
+
+      // Age
+      const age = formData.get('age');
+      if (age) {
+        fields.push({ name: 'age', value: age as string, type: 'string' });
+      }
+
+      // Occupation
+      const occupation = formData.get('occupation');
+      if (occupation) {
+        fields.push({ name: 'occupation', value: occupation as string, type: 'string' });
+      }
+
+      // Actor
+      const actor = formData.get('actor');
+      if (actor) {
+        fields.push({ name: 'actor', value: actor as string, type: 'reference' });
+      }
+
+      // Projects - convert comma-separated to array
+      const projects = formData.get('projects') as string;
+      if (projects) {
+        const projectList = projects.split(',').map(p => p.trim()).filter(Boolean);
+        fields.push({ name: 'projects', value: projectList, type: 'references' });
+      }
+
+      // Traits - convert comma-separated to array
+      const traits = formData.get('traits') as string;
+      if (traits) {
+        const traitList = traits.split(',').map(t => t.trim()).filter(Boolean);
+        fields.push({ name: 'traits', value: traitList, type: 'array' });
+      }
+
+      // Relationships
+      const relationships = formData.get('relationships');
+      if (relationships) {
+        fields.push({ name: 'relationships', value: relationships as string, type: 'string' });
+      }
+
+      // Generate character content
+      const characterBody = `
+## Biography
+
+Add character biography here...
+
+## Personality
+
+Describe the character's personality, motivations, and arc...
+
+## Appearance
+
+Physical description and notable features...
+
+## Background
+
+Character's history and backstory...
+`;
+
+      const content = createMDXContent(fields, characterBody);
+      const filename = (formData.get('slug') as string) || titleToSlug(formData.get('name') as string) || 'new-character';
+      
+      // Close sidebar and open fullscreen editor
+      if (sidebar.close) sidebar.close();
+      if ((window as any).openFullscreenEditor) {
+        (window as any).openFullscreenEditor(content, filename);
+      }
+    }) as EventListener);
+  });
+</script>

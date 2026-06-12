@@ -5,6 +5,8 @@
   No layout, no component styling, no classes.
   Everything else lives in component <style> tags.
 */
+@import './typography.css';
+@import './markdown.css';
 
 @font-face {
   font-family: "Atkinson";
@@ -24,22 +26,43 @@
 
 :root {
   /* ── Brand ──────────────────────────────────── */
-  --accent:           #e8c547;
+  --accent-light:     #ffea9d;
+  --accent:           rgb(232, 197, 71);
+  --accent-rgb:       232, 197, 71;
   --accent-dim:       #b89a2e;
-  --accent-subtle:    rgba(232, 197, 71, 0.08);
+  --accent-dim-rgb:   184, 154, 46;
+  --accent-dark:      #50420c;
+  --accent-subtle:    rgba(179, 146, 28, 0.157);
+  --blue-light:       #84c2ff;
+  --blue-light-rgb:   132, 194, 255;
+  --blue:             #1976d2;
+  --blue-rgb:         25, 118, 210;
+  --blue-dim:         #0d47a1;
+  --blue-dim-rgb:     13, 71, 161;
+  --blue-dark:        #032f71;
+  --blue-dark-rgb:    3, 47, 113;
+  --blue-subtle:      rgba(25, 118, 210, 0.157);
 
   /* ── Surfaces ───────────────────────────────── */
   --bg:               #0f0f0f;
-  --bg-raised:        #181818;
-  --bg-card:          #1c1c1c;
-  --bg-card-hover:    #222222;
-  --border:           rgba(255, 255, 255, 0.08);
-  --border-strong:    rgba(255, 255, 255, 0.16);
+  --bg-subtle:        rgb(15, 15, 15, .75);
+  --bg-raised:        rgb(17, 25, 15);
+  --bg-raised-rgb:    17, 25, 15;
+  --bg-raised-hover:  rgb(24, 35, 20, .5);
+  --bg-raised-subtle: rgb(24, 24, 24, .75);
+  --bg-card:          rgb(47, 25, 25);
+  --bg-card-rgb:      47, 25, 25;
+  --bg-card-hover:    #3f3737;
+  --bg-card-subtle:   rgb(28, 28, 28, .75);
+  --border-subtle:     rgba(201, 202, 167, 0.25);
+  --border:           rgba(201, 202, 167, 0.5);
+  --border-strong:    rgba(201, 202, 167, 0.75);
 
   /* ── Type ───────────────────────────────────── */
-  --text-primary:     #f0ece2;
-  --text-secondary:   #8a8780;
-  --text-muted:       #4a4845;
+  --text-primary:     #deddd8;
+  --text-secondary:   #cac4b6;
+  --text-highlight:  #ffea9d;
+  --text-muted:       #716554;
 
   /* ── Status ─────────────────────────────────── */
   --status-draft:     #4a4845;
@@ -67,17 +90,18 @@
   --radius-lg: 10px;
 
   /* ── Typography ─────────────────────────────── */
-  --font-body: "Atkinson", sans-serif;
+  --font-body: sans-serif;
   --font-mono: "Berkeley Mono", "Fira Code", "Courier New", monospace;
 
-  --text-xs:   0.75rem;
-  --text-sm:   0.875rem;
-  --text-base: 1rem;
-  --text-lg:   1.125rem;
-  --text-xl:   1.25rem;
-  --text-2xl:  1.5rem;
-  --text-3xl:  2rem;
-  --text-4xl:  2.75rem;
+  --text-xs:   clamp(0.75rem, 0.5rem + 0.5vw, 0.875rem);
+  --text-sm:   clamp(0.875rem, 0.75rem + 0.5vw, 1rem);
+  --text-base-flat: 1rem;
+  --text-base: clamp(1rem, 0.875rem + 0.5vw, 1.25rem);
+  --text-lg:   clamp(1.25rem, 1rem + .5vw, 1.75rem);
+  --text-xl:   clamp(1.75rem, 1.5rem + .75vw, 2.25rem);
+  --text-2xl:  clamp(2.25rem, 2rem + .8vw, 2.75rem);
+  --text-3xl:  clamp(2.75rem, 2.5rem + 1vw, 3.75rem);
+  --text-4xl:  clamp(3.5rem, 3rem + 1.5vw, 5rem);
 
   /* ── Elevation ──────────────────────────────── */
   --shadow-card:       0 1px 3px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3);
@@ -108,8 +132,8 @@ html {
 body {
   font-family: var(--font-body);
   font-size: var(--text-base);
-  line-height: 1.7;
-  color: var(--text-primary);
+  line-height: 1.25;
+  color: var(--text-secondary);
   background-color: var(--bg);
   margin: 0;
   padding: 0;
@@ -124,7 +148,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 p  { margin: 0 0 1em; }
-ul, ol { margin: 0; padding: 0; list-style: none; }
+/* ul, ol { margin: 0; padding: 0; list-style: none; } */
 
 a {
   color: var(--accent);
@@ -146,7 +170,7 @@ button {
 input, textarea, select {
   font-family: var(--font-body);
   font-size: var(--text-base);
-  color: var(--text-primary);
+  color: var(--text-secondary);
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -179,7 +203,7 @@ pre > code { all: unset; font-family: var(--font-mono); font-size: var(--text-sm
 hr {
   border: none;
   border-top: 1px solid var(--border);
-  margin: var(--space-8) 0;
+  margin: var(--space-4) 0;
 }
 
 /* ── Utility ─────────────────────────────────── */

@@ -1,0 +1,7 @@
+# robots.txt for writty.netlify.app
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://writty.netlify.app/sitemap-index.xml
+Sitemap: https://writty.netlify.app/sitemap-0.xml

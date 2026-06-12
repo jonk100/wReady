@@ -1,0 +1,172 @@
+---
+/**
+ * CharacterCoStars.astro
+ *
+ * Shows which characters appear alongside a given character most often,
+ * ranked by shared scenes (and optionally lines). Each entry also shows
+ * that character's overall totals for context.
+ *
+ * @example
+ * <CharacterCoStars project="her-majestys-displeasure" character="band/john-lennon" />
+ * <CharacterCoStars project="her-majestys-displeasure" character="band/john-lennon" episode="episode-1" />
+ * <CharacterCoStars project="her-majestys-displeasure" character="band/john-lennon" showLines limit={5} />
+ */
+
+import { getCollection } from "astro:content";
+import { resolveCharacterId, labelFromId } from "../../../../utils/screenwriting/helpers";
+
+interface Props {
+  project: string;
+  character: string;
+  episode?: string;
+  location?: string;
+  sceneStart?: number;
+  sceneEnd?: number;
+  /** Also show shared line counts. Defaults to true. */
+  showLines?: boolean;
+  /** Max co-stars to show. Defaults to all. */
+  limit?: number;
+}
+
+const {
+  project,
+  character,
+  episode,
+  location,
+  sceneStart,
+  sceneEnd,
+  showLines = true,
+  limit,
+} = Astro.props;
+
+const characterId = resolveCharacterId(project, character);
+
+const allScenes = await getCollection("scenes");
+
+// All project scenes (for totals)
+const projectScenes = allScenes.filter((s) => s.data.project.id === project);
+
+// Scenes that include our focal character
+let sharedScenes = projectScenes.filter((s) =>
+  s.data.characters.some((c) => c.id === characterId)
+);
+
+// Apply optional filter
+if (episode) {
+  sharedScenes = sharedScenes.filter(
+    (s) => s.data.episode?.id === `${project}/${episode}`
+  );
+} else if (location) {
+  sharedScenes = sharedScenes.filter((s) =>
+    s.data.location.some((l) => l.id === `${project}/${location}`)
+  );
+} else if (sceneStart !== undefined || sceneEnd !== undefined) {
+  sharedScenes = sharedScenes.filter((s) => {
+    const n = s.data.sceneNumber;
+    const afterStart = sceneStart === undefined || n >= sceneStart;
+    const beforeEnd = sceneEnd === undefined || n <= sceneEnd;
+    return afterStart && beforeEnd;
+  });
+}
+
+// Collect all character ids for line parsing
+const allCharacterIds = [
+  ...new Set(projectScenes.flatMap((s) => s.data.characters.map((c) => c.id))),
+];
+
+function parseLines(body: string, charId: string): number {
+  const slug = charId.split("/").pop()!.toLowerCase();
+  const cueRegex = /^c-(.+)$/gm;
+  let count = 0;
+  let match: RegExpExecArray | null;
+  while ((match = cueRegex.exec(body)) !== null) {
+    const raw = match[1]
+      .replace(/\(CONT'D\)/gi, "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+    if (raw === slug || raw.includes(slug)) count++;
+  }
+  return count;
+}
+
+// Tally shared scenes + lines per co-star
+const sharedSceneCount: Record<string, number> = {};
+const sharedLineCount: Record<string, number> = {};
+
+for (const scene of sharedScenes) {
+  for (const c of scene.data.characters) {
+    if (c.id === characterId) continue; // skip focal character
+    sharedSceneCount[c.id] = (sharedSceneCount[c.id] ?? 0) + 1;
+    if (showLines && scene.body) {
+      sharedLineCount[c.id] =
+        (sharedLineCount[c.id] ?? 0) + parseLines(scene.body, c.id);
+    }
+  }
+}
+
+// Tally total scenes + lines per co-star across all project scenes
+const totalSceneCount: Record<string, number> = {};
+const totalLineCount: Record<string, number> = {};
+
+for (const scene of projectScenes) {
+  for (const c of scene.data.characters) {
+    if (c.id === characterId) continue;
+    totalSceneCount[c.id] = (totalSceneCount[c.id] ?? 0) + 1;
+    if (showLines && scene.body) {
+      totalLineCount[c.id] =
+        (totalLineCount[c.id] ?? 0) + parseLines(scene.body, c.id);
+    }
+  }
+}
+
+let coStars = Object.entries(sharedSceneCount)
+  .map(([id, sharedScenes]) => ({
+    id,
+    sharedScenes,
+    sharedLines: sharedLineCount[id] ?? 0,
+    totalScenes: totalSceneCount[id] ?? 0,
+    totalLines: totalLineCount[id] ?? 0,
+  }))
+  .sort((a, b) => b.sharedScenes - a.sharedScenes);
+
+if (limit) coStars = coStars.slice(0, limit);
+
+const characterLabel = labelFromId(characterId);
+
+let context = "";
+if (episode) context = ` in ${labelFromId(`${project}/${episode}`)}`;
+else if (location) context = ` at ${labelFromId(`${project}/${location}`)}`;
+else if (sceneStart !== undefined && sceneEnd !== undefined)
+  context = ` in scenes ${sceneStart}–${sceneEnd}`;
+---
+
+<section>
+  <h3>Most scenes alongside {characterLabel}{context}</h3>
+  {coStars.length === 0 ? (
+    <p>No co-stars found.</p>
+  ) : (
+    <table>
+      <thead>
+        <tr>
+          <th>Character</th>
+          <th>Shared scenes{context ? ` ${context.trim()}` : ""}</th>
+          {showLines && <th>Shared lines{context ? ` ${context.trim()}` : ""}</th>}
+          <th>Total scenes</th>
+          {showLines && <th>Total lines</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {coStars.map(({ id, sharedScenes, sharedLines, totalScenes, totalLines }) => (
+          <tr>
+            <td>{labelFromId(id)}</td>
+            <td>{sharedScenes}</td>
+            {showLines && <td>{sharedLines}</td>}
+            <td>{totalScenes}</td>
+            {showLines && <td>{totalLines}</td>}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+</section>

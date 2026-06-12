@@ -3,6 +3,8 @@ import { getEntry, getCollection, render } from "astro:content";
 import Layout from "../../layouts/BaseLayout.astro";
 import type { CollectionEntry } from "astro:content";
 import Breadcrumb from "../../components/Breadcrumb.astro";
+import TableOfContents from "../../components/TableOfContents.astro";
+import CharacterLines from "../../components/projects/screenplays/stats/CharacterLines.astro";
 
 /**
  * Generate static paths for character pages
@@ -53,6 +55,9 @@ const sortedScenes = relatedScenes.sort((a, b) => {
   const bNum = parseInt(String(b.data.sceneNumber)) || 0;
   return aNum - bNum;
 });
+
+const characterId = character.id.replace(`${project}/`, '');
+const characterSlug = characterId;
 ---
 
 <Layout title={`${character.data.name} - Characters`}>
@@ -97,7 +102,7 @@ const sortedScenes = relatedScenes.sort((a, b) => {
       </div>
 
       <aside class="sidebar">
-        {character.data.first_appearance && (
+        <!-- {character.data.first_appearance && (
           <div class="info-card">
             <h3>First Appearance</h3>
             <p>{character.data.first_appearance}</p>
@@ -109,7 +114,7 @@ const sortedScenes = relatedScenes.sort((a, b) => {
             <h3>Last Appearance</h3>
             <p>{character.data.last_appearance}</p>
           </div>
-        )}
+        )} -->
         
         {character.data.themes && character.data.themes.length > 0 && (
           <div class="info-card">
@@ -138,6 +143,11 @@ const sortedScenes = relatedScenes.sort((a, b) => {
         )}
       </aside>
     </div>
+
+    <div class="toc-sidebar">
+      <TableOfContents headings={headings} />
+      <CharacterLines project={project} character={characterSlug} />
+    </div>
   </div>
 </Layout>
 
@@ -151,13 +161,14 @@ const sortedScenes = relatedScenes.sort((a, b) => {
   .character-header {
     margin-bottom: 3rem;
     padding-bottom: 2rem;
-    border-bottom: 2px solid #eee;
+    border-bottom: 2px solid rgba(var(--accent-rgb), 0.3);
   }
 
   .character-header h1 {
     margin: 0 0 1rem 0;
     font-size: 2.5rem;
     font-weight: 700;
+    color: var(--text-primary);
   }
 
   .character-meta {
@@ -170,39 +181,43 @@ const sortedScenes = relatedScenes.sort((a, b) => {
   .role,
   .occupation,
   .age {
-    background: #f5f5f5;
-    padding: 0.5rem 1rem;
+    padding: 0.25rem .75rem;
     border-radius: 20px;
     font-size: 0.875rem;
     font-weight: 500;
+    border: 1px solid var(--border-strong);
+
   }
 
   .role {
-    background: #e8f5e8;
-    color: #2e7d32;
+    background: var(--bg-raised) !important;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-strong);
   }
 
   .occupation {
-    background: #e3f2fd;
-    color: #1976d2;
+    background: var(--bg-card) !important;
+    color: var(--text-secondary);
   }
 
   .age {
-    background: #fff3e0;
-    color: #e65100;
+    background: var(--bg-raised) !important;
+    color: var(--text-secondary);
+
   }
 
   .description {
     font-size: 1.125rem;
     line-height: 1.6;
-    color: #555;
+    color: var(--text-secondary);
+    font-weight: 400
     font-style: italic;
     margin: 0;
   }
 
   .character-content {
     display: grid;
-    grid-template-columns: 1fr 300px;
+    grid-template-columns: 1fr 280px;
     gap: 3rem;
   }
 
@@ -210,8 +225,22 @@ const sortedScenes = relatedScenes.sort((a, b) => {
     min-width: 0;
   }
 
+  .toc-sidebar {
+    position: fixed;
+    width: 260px;
+    overflow-y: auto;
+    background: var(--bg);
+    z-index: 30;
+    top: 0px;
+    left: 0;
+  }
+
+  .container {
+    margin-left: 350px;
+  }
+
   .markdown {
-    line-height: 1.7;
+    line-height: 1.4;
   }
 
   .markdown h1,
@@ -221,55 +250,32 @@ const sortedScenes = relatedScenes.sort((a, b) => {
     margin-bottom: 1rem;
   }
 
-  .markdown h1 {
-    font-size: 2rem;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.5rem;
+  .markdown h4 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
   }
 
-  .markdown h2 {
-    font-size: 1.5rem;
-  }
-
-  .markdown h3 {
-    font-size: 1.25rem;
-  }
-
-  .markdown p {
-    margin-bottom: 1rem;
-  }
-
-  .markdown ul,
-  .markdown ol {
-    margin-bottom: 1rem;
-    padding-left: 2rem;
-  }
-
-  .markdown li {
-    margin-bottom: 0.5rem;
-  }
 
   .sidebar {
-    position: sticky;
-    top: 2rem;
-    height: fit-content;
+    position: static;
+    height: auto;
   }
 
   .info-card {
-    background: #f9f9f9;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    padding: 1.5rem;
+    background: var(--bg-raised);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: .5rem;
     margin-bottom: 1.5rem;
   }
 
   .info-card h3 {
-    margin: 0 0 1rem 0;
     font-size: 1rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #666;
+    color: var(--accent-dim);
+    padding-left: 1rem;
   }
 
   .info-card p {
@@ -279,7 +285,6 @@ const sortedScenes = relatedScenes.sort((a, b) => {
 
   .info-card ul {
     margin: 0;
-    padding-left: 1.5rem;
     font-size: 0.875rem;
   }
 
@@ -295,21 +300,34 @@ const sortedScenes = relatedScenes.sort((a, b) => {
   .scene-list a {
     display: block;
     padding: 0.5rem;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 2px;
     text-decoration: none;
-    color: #333;
+    color: var(--text-secondary);
     font-size: 0.875rem;
     transition: all 0.2s ease;
+    shadow: var(--shadow-card);
   }
 
   .scene-list a:hover {
-    background: #f5f5f5;
-    border-color: #999;
+    background: var(--bg-card-hover);
+    border-color: var(--border);
+    shadow: var(--shadow-card-hover);
   }
 
   /* Responsive */
+  @media (max-width: 1200px) {
+    .toc-sidebar {
+      display: none;
+    }
+
+    .character-content {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+  }
+
   @media (max-width: 900px) {
     .character-content {
       grid-template-columns: 1fr;
